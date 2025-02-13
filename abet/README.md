@@ -6,4 +6,4 @@ React and Tailwind CSS for the front-end
 NEXT.js for the back-end
 MySQL for database
 
-### Work on by: Yazeed Qasas, Motaz Aldibs
+### Worked on by: Yazeed Qasas, Motaz Aldibs
