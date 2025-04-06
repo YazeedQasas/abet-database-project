@@ -1,9 +1,9 @@
-// src/pages/assessment/AssessmentsList.js
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../services/api';
+import './AssessmentList.css';
 
-const AssessmentsList = () => {
+const AssessmentList = () => {
   const [assessments, setAssessments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -12,54 +12,44 @@ const AssessmentsList = () => {
     const fetchAssessments = async () => {
       try {
         const response = await api.get('/assessments/');
-        setAssessments(response.data);
-        setLoading(false);
+        setAssessments(response.data.results || response.data); // Handle potential paginated response
       } catch (err) {
-        setError('Failed to fetch assessments');
+        console.error('Error fetching assessments:', err.response?.data || err.message);
+        setError('Failed to load assessments.');
+      } finally {
         setLoading(false);
-        console.error(err);
       }
     };
 
     fetchAssessments();
   }, []);
 
-  if (loading) return <div>Loading assessments...</div>;
-  if (error) return <div>Error: {error}</div>;
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p className="error-message">{error}</p>;
 
   return (
-    <div className="assessments-list">
+    <div className="assessment-list-container">
       <h2>Assessments</h2>
-      <Link to="/assessments/new" className="btn-add">Create New Assessment</Link>
-      
+      <Link to="/assessments/new" className="btn-create-assessment">Create New Assessment</Link>
       {assessments.length === 0 ? (
-        <p>No assessments found. Create your first assessment.</p>
+        <p>No assessments found.</p>
       ) : (
-        <table className="assessments-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Date</th>
-              <th>Program</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {assessments.map(assessment => (
-              <tr key={assessment.id}>
-                <td>{assessment.name}</td>
-                <td>{new Date(assessment.date).toLocaleDateString()}</td>
-                <td>{assessment.program}</td>
-                <td>
-                  <Link to={`/assessments/${assessment.id}`}>View</Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <ul className="assessment-list">
+          {assessments.map((assessment) => (
+            <li key={assessment.id}>
+              <h3>Assessment {assessment.id}</h3>
+              <p>Date: {assessment.date}</p>
+              <p>Type: {assessment.assessment_type}</p>
+              <p>Compliance Score: {assessment.compliance_score?.toFixed(2) || 'N/A'}</p>
+              <Link to={`/assessments/${assessment.id}`} className="view-details-link">
+                View Details
+              </Link>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
 };
 
-export default AssessmentsList;
+export default AssessmentList;

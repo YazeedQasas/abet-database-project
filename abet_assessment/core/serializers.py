@@ -1,11 +1,7 @@
 # core/serializers.py
 from rest_framework import serializers
-from .models import Facility, InstitutionalSupport, ProgramCriteria, Meeting, Document, MastersLevelRequirement
+from .models import InstitutionalSupport, ProgramCriteria, Meeting, Document, MastersLevelRequirement
 
-class FacilitySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Facility
-        fields = '__all__'
 
 class InstitutionalSupportSerializer(serializers.ModelSerializer):
     class Meta:
