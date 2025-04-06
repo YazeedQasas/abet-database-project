@@ -1,11 +1,8 @@
 # core/views.py
 from rest_framework import viewsets
-from .models import Facility, InstitutionalSupport, ProgramCriteria, Meeting, Document, MastersLevelRequirement
-from .serializers import FacilitySerializer, InstitutionalSupportSerializer, ProgramCriteriaSerializer, MeetingSerializer, DocumentSerializer, MastersLevelRequirementSerializer
+from .models import  InstitutionalSupport, ProgramCriteria, Meeting, Document, MastersLevelRequirement
+from .serializers import InstitutionalSupportSerializer, ProgramCriteriaSerializer, MeetingSerializer, DocumentSerializer, MastersLevelRequirementSerializer
 
-class FacilityViewSet(viewsets.ModelViewSet):
-    queryset = Facility.objects.all()
-    serializer_class = FacilitySerializer
 
 class InstitutionalSupportViewSet(viewsets.ModelViewSet):
     queryset = InstitutionalSupport.objects.all()

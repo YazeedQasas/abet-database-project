@@ -17,7 +17,6 @@ const AssessmentDetail = () => {
         const assessmentResponse = await api.get(`/assessments/${id}/`);
         setAssessment(assessmentResponse.data);
         
-        // Fetch assessment results
         const resultsResponse = await api.get(`/assessment-results/?assessment=${id}`);
         setResults(resultsResponse.data);
         

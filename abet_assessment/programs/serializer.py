@@ -15,6 +15,9 @@ class ProgramSerializer(serializers.ModelSerializer):
     class Meta:
         model = Program
         fields = '__all__'
+    def create(self, validated_data):
+        print("Creating program with data:", validated_data)
+        return super().create(validated_data)
 
 class ProgramEducationalObjectiveSerializer(serializers.ModelSerializer):
     class Meta:

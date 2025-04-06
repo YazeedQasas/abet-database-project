@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 
 const ProgramForm = () => {
   const navigate = useNavigate();
+  const [departments, setDepartments] = useState([]);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -12,6 +13,20 @@ const ProgramForm = () => {
   });
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // Fetch departments when component mounts
+    const fetchDepartments = async () => {
+      try {
+        const response = await api.get('/departments/');
+        setDepartments(response.data);
+      } catch (err) {
+        console.error('Failed to fetch departments', err);
+      }
+    };
+    
+    fetchDepartments();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -25,17 +40,20 @@ const ProgramForm = () => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-
+  
     try {
-      await api.post('/programs/', formData);
-      navigate('/programs');
+      console.log('Submitting form data:', formData);
+      const response = await api.post('/programs/', formData);
+      console.log('Response:', response.data);
     } catch (err) {
-      setError('Failed to create program. Please check your input and try again.');
-      console.error(err);
+      console.error('Error details:', err.response?.data);
+      setError(err.response?.data?.detail || 'Failed to create program. Please check your input and try again.');
     } finally {
       setLoading(false);
+      navigate('/programs/');
     }
   };
+  
 
   return (
     <div className="program-form">
@@ -69,14 +87,20 @@ const ProgramForm = () => {
         
         <div className="form-group">
           <label htmlFor="department">Department</label>
-          <input
-            type="text"
+          <select
             id="department"
             name="department"
             value={formData.department}
             onChange={handleChange}
             required
-          />
+          >
+            <option value="">Select a department</option>
+            {departments.map(dept => (
+              <option key={dept.id} value={dept.id}>
+                {dept.name}
+              </option>
+            ))}
+          </select>
         </div>
         
         <div className="form-group">

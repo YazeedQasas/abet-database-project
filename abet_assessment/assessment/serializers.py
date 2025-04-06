@@ -1,33 +1,33 @@
-# assessment/serializers.py
 from rest_framework import serializers
-from .models import ABETStudentOutcome, LearningOutcome, Assessment, AssessmentLearningOutcome, AssessmentResult, ContinuousImprovement
+from .models import ABETCriterion, KPI, Assessment, KPIScore
 
-class ABETStudentOutcomeSerializer(serializers.ModelSerializer):
+class KPISerializer(serializers.ModelSerializer):
     class Meta:
-        model = ABETStudentOutcome
-        fields = '__all__'
+        model = KPI
+        fields = ['id', 'name', 'description', 'weight']
 
-class LearningOutcomeSerializer(serializers.ModelSerializer):
+class ABETCriterionSerializer(serializers.ModelSerializer):
+    kpis = KPISerializer(many=True, read_only=True)
+    
     class Meta:
-        model = LearningOutcome
-        fields = '__all__'
+        model = ABETCriterion
+        fields = ['id', 'name', 'description', 'kpis']
+
+class KPIScoreSerializer(serializers.ModelSerializer):
+    kpi_name = serializers.ReadOnlyField(source='kpi.name')
+    criterion_name = serializers.ReadOnlyField(source='kpi.criterion.name')
+    
+    class Meta:
+        model = KPIScore
+        fields = ['id', 'kpi', 'kpi_name', 'criterion_name', 'score', 'evidence']
 
 class AssessmentSerializer(serializers.ModelSerializer):
+    scores = KPIScoreSerializer(many=True, read_only=True)
+    overall_score = serializers.SerializerMethodField()
+    
     class Meta:
         model = Assessment
-        fields = '__all__'
-
-class AssessmentLearningOutcomeSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = AssessmentLearningOutcome
-        fields = '__all__'
-
-class AssessmentResultSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = AssessmentResult
-        fields = '__all__'
-
-class ContinuousImprovementSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ContinuousImprovement
-        fields = '__all__'
+        fields = ['id', 'name', 'date_created', 'completed', 'scores', 'overall_score']
+    
+    def get_overall_score(self, obj):
+        return obj.calculate_overall_score()

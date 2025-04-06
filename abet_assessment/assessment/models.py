@@ -1,63 +1,50 @@
-# assessment/models.py
 from django.db import models
-from programs.models import Program, Course, Student
 
-class ABETStudentOutcome(models.Model):
-    """ABET's 7 student outcomes (1-7) for engineering programs"""
-    number = models.IntegerField(choices=[(i, i) for i in range(1, 8)])
+class ABETCriterion(models.Model):
+    name = models.CharField(max_length=255)
     description = models.TextField()
     
-    def __str__(self):
-        return f"ABET Outcome {self.number}: {self.description[:50]}..."
-
-class LearningOutcome(models.Model):
-    description = models.TextField()
-    program = models.ForeignKey('programs.Program', on_delete=models.CASCADE, related_name='learning_outcomes')
-    abet_outcomes = models.ManyToManyField(ABETStudentOutcome, related_name='program_outcomes')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"Outcome for {self.program.name}: {self.description[:50]}..."
-
-class Assessment(models.Model):
-    name = models.CharField(max_length=100)
-    date = models.DateField()
-    program = models.ForeignKey('programs.Program', on_delete=models.CASCADE, related_name='assessments')
-    learning_outcomes = models.ManyToManyField(LearningOutcome, through='AssessmentLearningOutcome')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
     def __str__(self):
         return self.name
 
-class AssessmentLearningOutcome(models.Model):
-    assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE)
-    outcome = models.ForeignKey(LearningOutcome, on_delete=models.CASCADE)
+class KPI(models.Model):
+    criterion = models.ForeignKey(ABETCriterion, on_delete=models.CASCADE, related_name='kpis')
+    name = models.CharField(max_length=255)
+    description = models.TextField()
+    weight = models.DecimalField(max_digits=5, decimal_places=2)  # Weight as percentage
+    
+    def __str__(self):
+        return f"{self.criterion.name} - {self.name}"
+
+class Assessment(models.Model):
+    name = models.CharField(max_length=255)
+    date_created = models.DateTimeField(auto_now_add=True)
+    completed = models.BooleanField(default=False)
+    
+    def __str__(self):
+        return self.name
+    
+    def calculate_overall_score(self):
+        scores = KPIScore.objects.filter(assessment=self)
+        total_score = 0
+        total_weight = 0
+        
+        for score in scores:
+            total_score += score.score * float(score.kpi.weight)
+            total_weight += float(score.kpi.weight)
+        
+        if total_weight > 0:
+            return (total_score / total_weight)
+        return 0
+
+class KPIScore(models.Model):
+    assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name='scores')
+    kpi = models.ForeignKey(KPI, on_delete=models.CASCADE)
+    score = models.DecimalField(max_digits=5, decimal_places=2)  # Score from 0-100
+    evidence = models.TextField(blank=True, null=True)
     
     class Meta:
-        unique_together = ('assessment', 'outcome')
-
-class AssessmentResult(models.Model):
-    student = models.ForeignKey('programs.Student', on_delete=models.CASCADE)
-    assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE)
-    grade = models.CharField(max_length=10)
-    date = models.DateField()
-    comments = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
+        unique_together = ('assessment', 'kpi')
+    
     def __str__(self):
-        return f"{self.student} - {self.assessment} - {self.grade}"
-
-class ContinuousImprovement(models.Model):
-    program = models.ForeignKey('programs.Program', on_delete=models.CASCADE, related_name='improvements')
-    assessment_result = models.ForeignKey(AssessmentResult, on_delete=models.CASCADE, related_name='improvements')
-    action_taken = models.TextField()
-    implementation_date = models.DateField()
-    effectiveness_measure = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"Improvement for {self.program.name} based on {self.assessment_result}"
+        return f"{self.assessment.name} - {self.kpi.name}: {self.score}"
