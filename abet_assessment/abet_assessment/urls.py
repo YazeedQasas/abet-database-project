@@ -11,7 +11,10 @@ from core.views import (
     MeetingViewSet, DocumentViewSet, MastersLevelRequirementViewSet
 )
 
-from assessment.views import ABETCriterionViewSet, KPIViewSet, AssessmentViewSet
+from assessment.views import (
+    AssessmentViewSet, ContinuousImprovementViewSet, AcademicPerformanceViewSet,
+    AssessmentLearningOutcomeViewSet, AssessmentLearningOutcomeABETViewSet
+)
 
 router = DefaultRouter()
 # Programs app routes
@@ -24,9 +27,11 @@ router.register(r'course-students', CourseStudentViewSet)
 
 # Assessment app routes
 
-router.register(r'criteria', ABETCriterionViewSet)
-router.register(r'kpis', KPIViewSet)
 router.register(r'assessments', AssessmentViewSet)
+router.register(r'continuous-improvements', ContinuousImprovementViewSet)
+router.register(r'academic-performances', AcademicPerformanceViewSet)
+router.register(r'learning-outcomes', AssessmentLearningOutcomeViewSet)
+router.register(r'abet-outcomes', AssessmentLearningOutcomeABETViewSet)
 
 # Core app routes
 router.register(r'institutional-support', InstitutionalSupportViewSet)
