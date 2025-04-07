@@ -1,50 +1,61 @@
 from django.db import models
 
-class ABETCriterion(models.Model):
-    name = models.CharField(max_length=255)
-    description = models.TextField()
-    
-    def __str__(self):
-        return self.name
-
-class KPI(models.Model):
-    criterion = models.ForeignKey(ABETCriterion, on_delete=models.CASCADE, related_name='kpis')
-    name = models.CharField(max_length=255)
-    description = models.TextField()
-    weight = models.DecimalField(max_digits=5, decimal_places=2)  # Weight as percentage
-    
-    def __str__(self):
-        return f"{self.criterion.name} - {self.name}"
-
 class Assessment(models.Model):
-    name = models.CharField(max_length=255)
-    date_created = models.DateTimeField(auto_now_add=True)
-    completed = models.BooleanField(default=False)
+    Assessment_id = models.BigAutoField(primary_key=True)
+    name = models.CharField(max_length=100)
+    date = models.DateField()
+    program_ID = models.BigIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     def __str__(self):
         return self.name
-    
-    def calculate_overall_score(self):
-        scores = KPIScore.objects.filter(assessment=self)
-        total_score = 0
-        total_weight = 0
-        
-        for score in scores:
-            total_score += score.score * float(score.kpi.weight)
-            total_weight += float(score.kpi.weight)
-        
-        if total_weight > 0:
-            return (total_score / total_weight)
-        return 0
 
-class KPIScore(models.Model):
-    assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name='scores')
-    kpi = models.ForeignKey(KPI, on_delete=models.CASCADE)
-    score = models.DecimalField(max_digits=5, decimal_places=2)  # Score from 0-100
-    evidence = models.TextField(blank=True, null=True)
-    
-    class Meta:
-        unique_together = ('assessment', 'kpi')
+class ContinuousImprovement(models.Model):
+    action_taken = models.TextField()
+    implementation_date = models.DateField()
+    effectiveness_measure = models.TextField()
+    weight = models.IntegerField()
+    score = models.FloatField()
+    assessment_id = models.BigIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     def __str__(self):
-        return f"{self.assessment.name} - {self.kpi.name}: {self.score}"
+        return f"Continuous Improvement for Assessment {self.assessment_id}"
+
+class AcademicPerformance(models.Model):
+    assessmentType = models.CharField(max_length=50)
+    high = models.FloatField()
+    mean = models.FloatField()
+    low = models.FloatField()
+    grade = models.IntegerField()
+    weight = models.IntegerField()
+    course_id = models.BigIntegerField()
+    instructor_id = models.BigIntegerField()
+    description = models.TextField()
+    assessment_id = models.BigIntegerField()
+    
+    def __str__(self):
+        return f"Academic Performance for Assessment {self.assessment_id}"
+
+class AssessmentLearningOutcome(models.Model):
+    AssesssmentLearningOutcome_id = models.BigAutoField(primary_key=True)
+    description = models.TextField()
+    program_id = models.BigIntegerField()
+    assessment_id = models.BigIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"Learning Outcome for Assessment {self.assessment_id}"
+
+class AssessmentLearningOutcome_ABET(models.Model):
+    weight = models.IntegerField()
+    score = models.IntegerField()
+    ABETOutcomes_id = models.BigIntegerField()
+    AssessmentLearningoutcome_id = models.BigIntegerField()
+    LearningOutcome_id = models.BigIntegerField()
+    
+    def __str__(self):
+        return f"ABET Outcome {self.ABETOutcomes_id} for Assessment {self.AssessmentLearningoutcome_id}"
