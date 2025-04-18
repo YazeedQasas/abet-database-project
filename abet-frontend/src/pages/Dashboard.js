@@ -3,20 +3,8 @@ import { Link } from 'react-router-dom';
 import api from '../services/api';
 import assessmentService from '../services/assessmentService';
 import './Dashboard.css';
-import { 
-  FaUniversity, 
-  FaBuilding, 
-  FaBook, 
-  FaClipboardList,
-  FaChartLine,
-  FaCheckCircle
-} from 'react-icons/fa';
-import { 
-  MdAddCircleOutline, 
-  MdAssessment, 
-  MdOutlineReport,
-  MdDashboard
-} from 'react-icons/md';
+import { FaUniversity, FaBuilding, FaBook, FaClipboardList, FaChartLine, FaCheckCircle } from 'react-icons/fa';
+import { MdAssessment, MdOutlineReport, MdDashboard } from 'react-icons/md';
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -25,7 +13,10 @@ const Dashboard = () => {
     courses: 0,
     assessments: 0,
   });
-  const [compliancePercentage, setCompliancePercentage] = useState(null);
+
+  const [averageScore, setAverageScore] = useState(null);
+  const [weightedAverage, setWeightedAverage] = useState(null);
+  const [componentScores, setComponentScores] = useState(null);
   const [complianceColor, setComplianceColor] = useState('#808080');
   const [abetAssessments, setAbetAssessments] = useState([]);
   const [selectedAssessment, setSelectedAssessment] = useState(null);
@@ -35,10 +26,10 @@ const Dashboard = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [statsRes, complianceRes, abetRes] = await Promise.all([
+        const [statsRes, abetRes, avgRes] = await Promise.all([
           api.get('dashboard-stats/'),
-          api.get('compliance-data/'),
           assessmentService.getAssessments(),
+          api.get('assessments/average-score/')
         ]);
 
         setStats({
@@ -48,16 +39,15 @@ const Dashboard = () => {
           assessments: statsRes.data.assessments || 0,
         });
 
+        setAverageScore(avgRes.data.average_score || 0);
         setAbetAssessments(abetRes.data);
 
         if (abetRes.data.length > 0) {
-          const assessment = await assessmentService.getAssessment(abetRes.data[0].id);
+          const firstId = abetRes.data[0].id;
+          const assessment = await assessmentService.getAssessment(firstId);
           setSelectedAssessment(assessment.data);
+          await fetchAssessmentComponents(assessment.data.id);
         }
-
-        const complianceScore = complianceRes.data.compliance_percentage || 0;
-        setCompliancePercentage(complianceScore);
-        setComplianceColor(getComplianceColor(complianceScore));
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
       } finally {
@@ -68,15 +58,44 @@ const Dashboard = () => {
     fetchData();
   }, []);
 
+  const fetchAssessmentComponents = async (assessmentId) => {
+    if (!assessmentId) {
+      console.warn('fetchAssessmentComponents called without a valid assessmentId');
+      return;
+    }
+  
+    try {
+      const scoreResponse = await assessmentService.calculateAssessmentScore(assessmentId);
+      const scoreData = scoreResponse.data;
+  
+      setWeightedAverage(scoreData.total_score);
+      setComplianceColor(getComplianceColor(scoreData.total_score));
+      setComponentScores({
+        continuousImprovement: scoreData.continuous_improvement_score,
+        academicPerformance: scoreData.academic_performance_score,
+        learningOutcome: scoreData.learning_outcome_score
+      });
+  
+      console.log("Assessment score calculated:", scoreData);
+    } catch (error) {
+      console.error('Error calculating assessment components:', error);
+      setWeightedAverage(null);
+    }
+  };
+  
+  
+
   const getComplianceColor = (percentage) => {
-    if (percentage >= 80) return '#4CAF50'; // Green
-    if (percentage >= 60) return '#FFC107'; // Amber
-    return '#F44336'; // Red
+    if (percentage >= 90) return '#4CAF50';
+    if (percentage >= 80) return '#FFC107';
+    if (percentage >= 70) return '#FF9800';
+    return '#F44336';
   };
 
   const getComplianceStatus = (percentage) => {
-    if (percentage >= 80) return 'Meeting Standard';
-    if (percentage >= 60) return 'Needs Improvement';
+    if (percentage >= 90) return 'ABET Accredited';
+    if (percentage >= 80) return 'Near Accreditation';
+    if (percentage >= 70) return 'Needs Improvement';
     return 'At Risk';
   };
 
@@ -84,8 +103,23 @@ const Dashboard = () => {
     try {
       const response = await assessmentService.getAssessment(assessmentId);
       setSelectedAssessment(response.data);
+      await fetchAssessmentComponents(assessmentId);
     } catch (error) {
       console.error('Error loading assessment:', error);
+    }
+  };
+
+  const calculateComponentAverage = (type) => {
+    if (!componentScores) return 'N/A';
+    switch (type) {
+      case 'continuous-improvement':
+        return Math.round(componentScores.continuousImprovement || 0);
+      case 'academic-performance':
+        return Math.round(componentScores.academicPerformance || 0);
+      case 'learning-outcome':
+        return Math.round(componentScores.learningOutcome || 0);
+      default:
+        return 'N/A';
     }
   };
 
@@ -108,8 +142,41 @@ const Dashboard = () => {
         <p className="header-subtitle">Overview of your accreditation progress and key metrics</p>
       </div>
 
+      <div className="compliance-card">
+        <div className="card-header">
+          <FaChartLine />
+          <h2>Overall Accreditation Progress</h2>
+        </div>
+        <div className="compliance-body">
+          <div className="progress-circle-container">
+            <svg viewBox="0 0 36 36" className="circular-chart">
+              <path className="circle-bg" d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831" />
+              {averageScore !== null && (
+                <path
+                  className="circle"
+                  strokeDasharray={`${averageScore},100`}
+                  style={{ stroke: getComplianceColor(averageScore) }}
+                  d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831"
+                />
+              )}
+              <text x="18" y="18" className="percentage">
+                {averageScore !== null ? `${Math.round(averageScore)}%` : 'N/A'}
+              </text>
+            </svg>
+          </div>
+          <div className="compliance-details">
+            <p className="status-indicator">
+              <span className="status-dot" style={{ backgroundColor: getComplianceColor(averageScore) }}></span>
+              {getComplianceStatus(averageScore)}
+            </p>
+            <p style={{ fontSize: '0.9rem', color: '#64748b' }}>
+              This reflects the average score across all ABET assessments.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="dashboard-content">
-        {/* Stats Row */}
         <div className="stats-row">
           {[
             { label: 'Programs', value: stats.programs, icon: FaUniversity, color: '#4361ee' },
@@ -125,43 +192,31 @@ const Dashboard = () => {
                 <h3>{value}</h3>
                 <p>{label}</p>
               </div>
-              <Link to={`/${label.toLowerCase()}`} className="stat-link">
-                View
-              </Link>
+              <Link to={`/${label.toLowerCase()}`} className="stat-link">View</Link>
             </div>
           ))}
         </div>
 
-        {/* Main Content Area - 2 Columns */}
         <div className="main-content">
-          {/* Compliance Card */}
           <div className="compliance-card">
             <div className="card-header">
               <FaChartLine />
-              <h2>ABET Compliance Score</h2>
+              <h2>ABET Assessment Score</h2>
             </div>
-            
             <div className="compliance-body">
               <div className="progress-circle-container">
                 <svg viewBox="0 0 36 36" className="circular-chart">
-                  <path
-                    className="circle-bg"
-                    d="M18 2.0845
-                      a 15.9155 15.9155 0 0 1 0 31.831
-                      a 15.9155 15.9155 0 0 1 0 -31.831"
-                  />
-                  {compliancePercentage !== null && (
+                  <path className="circle-bg" d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831" />
+                  {weightedAverage !== null && (
                     <path
                       className="circle"
-                      strokeDasharray={`${compliancePercentage},100`}
+                      strokeDasharray={`${weightedAverage},100`}
                       style={{ stroke: complianceColor }}
-                      d="M18 2.0845
-                        a 15.9155 15.9155 0 0 1 0 31.831
-                        a 15.9155 15.9155 0 0 1 0 -31.831"
+                      d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831"
                     />
                   )}
                   <text x="18" y="18" className="percentage">
-                    {compliancePercentage !== null ? `${Math.round(compliancePercentage)}%` : 'N/A'}
+                    {weightedAverage !== null ? `${Math.round(weightedAverage)}%` : 'N/A'}
                   </text>
                 </svg>
               </div>
@@ -169,11 +224,9 @@ const Dashboard = () => {
               <div className="compliance-details">
                 <div className="status-indicator">
                   <div className="status-dot" style={{ backgroundColor: complianceColor }}></div>
-                  <span style={{ color: complianceColor }}>
-                    {getComplianceStatus(compliancePercentage)}
-                  </span>
+                  <span style={{ color: complianceColor }}>{getComplianceStatus(weightedAverage)}</span>
                 </div>
-                
+
                 <div className="assessment-selector">
                   <label>Active Assessment:</label>
                   <select
@@ -183,7 +236,7 @@ const Dashboard = () => {
                   >
                     {abetAssessments.map((assessment) => (
                       <option key={assessment.id} value={assessment.id}>
-                        {assessment.name} ({new Date(assessment.date_created).toLocaleDateString()})
+                        {assessment.name} ({new Date(assessment.date).toLocaleDateString()})
                       </option>
                     ))}
                     {abetAssessments.length === 0 && (
@@ -191,14 +244,15 @@ const Dashboard = () => {
                     )}
                   </select>
                 </div>
-                
-                <p className="score-display">
-                  <span>ABET Score:</span>
-                  <strong>{selectedAssessment?.overall_score?.toFixed(1) || 'N/A'}%</strong>
-                </p>
+
+                <div className="assessment-breakdown">
+                  <p><strong>Assessment Breakdown:</strong></p>
+                  <p>Continuous Improvement: {calculateComponentAverage('continuous-improvement')}%</p>
+                  <p>Academic Performance: {calculateComponentAverage('academic-performance')}%</p>
+                  <p>Learning Outcomes: {calculateComponentAverage('learning-outcome')}%</p>
+                </div>
               </div>
             </div>
-            
             <div className="compliance-footer">
               <Link to="/assessments" className="btn primary">
                 <MdAssessment /> View All Assessments
@@ -209,13 +263,11 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Quick Actions Card */}
           <div className="quick-actions-card">
             <div className="card-header">
               <FaCheckCircle />
               <h2>Quick Actions</h2>
             </div>
-            
             <div className="actions-grid">
               {[
                 { label: 'Add New Program', link: '/programs/new', icon: FaUniversity, color: '#4361ee' },

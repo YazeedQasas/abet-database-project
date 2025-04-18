@@ -19,3 +19,7 @@ export const updateProgram = (id, programData) => {
 export const deleteProgram = (id) => {
   return api.delete(`/programs/${id}/`);
 };
+
+export const getCoursesByProgram = (programId) => {
+  return api.get(`/programs/${programId}/courses/`);
+};
