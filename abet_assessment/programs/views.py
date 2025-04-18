@@ -3,6 +3,8 @@ from .models import Department, Faculty, Program, ProgramEducationalObjective, C
 from .serializer import DepartmentSerializer, FacultySerializer, ProgramSerializer, ProgramEducationalObjectiveSerializer, CourseSerializer, StudentSerializer, CourseStudentSerializer
 from users.permissions import IsAdmin, IsFaculty, IsEvaluator, IsReviewer, IsFacultyForProgram
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.decorators import action
+from rest_framework.response import Response
 
 
 class DepartmentViewSet(viewsets.ModelViewSet):
@@ -23,17 +25,21 @@ class FacultyViewSet(viewsets.ModelViewSet):
 class ProgramViewSet(viewsets.ModelViewSet):
     queryset = Program.objects.all()
     serializer_class = ProgramSerializer
-    
+
     def create(self, request, *args, **kwargs):
-        print("Received data:", request.data)
         serializer = self.get_serializer(data=request.data)
-        if not serializer.is_valid():
-            print("Validation errors:", serializer.errors)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['get'], url_path='courses')
+    def get_courses(self, request, pk=None):
+        program = self.get_object()
+        courses = Course.objects.filter(program=program)
+        serializer = CourseSerializer(courses, many=True)
+        return Response(serializer.data)
+
 
 class ProgramEducationalObjectiveViewSet(viewsets.ModelViewSet):
     queryset = ProgramEducationalObjective.objects.all()
@@ -51,13 +57,4 @@ class CourseStudentViewSet(viewsets.ModelViewSet):
     queryset = CourseStudent.objects.all()
     serializer_class = CourseStudentSerializer
 
-class ProgramViewSet(viewsets.ModelViewSet):
-    queryset = Program.objects.all()
-    serializer_class = ProgramSerializer
-    
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+

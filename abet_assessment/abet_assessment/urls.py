@@ -13,25 +13,25 @@ from core.views import (
 
 from assessment.views import (
     AssessmentViewSet, ContinuousImprovementViewSet, AcademicPerformanceViewSet,
-    AssessmentLearningOutcomeViewSet, AssessmentLearningOutcomeABETViewSet
+    AssessmentLearningOutcomeViewSet, AssessmentLearningOutcomeABETViewSet, DashboardStatsView
 )
 
 router = DefaultRouter()
 # Programs app routes
 router.register(r'departments', DepartmentViewSet)
-router.register(r'programs', ProgramViewSet)
+router.register(r'programs', ProgramViewSet, basename= 'program')
 router.register(r'program-objectives', ProgramEducationalObjectiveViewSet)
 router.register(r'courses', CourseViewSet)
 router.register(r'students', StudentViewSet)
 router.register(r'course-students', CourseStudentViewSet)
 
 # Assessment app routes
-
-router.register(r'assessments', AssessmentViewSet)
+router.register(r'assessments', AssessmentViewSet, basename='assessment')
 router.register(r'continuous-improvements', ContinuousImprovementViewSet)
 router.register(r'academic-performances', AcademicPerformanceViewSet)
 router.register(r'learning-outcomes', AssessmentLearningOutcomeViewSet)
 router.register(r'abet-outcomes', AssessmentLearningOutcomeABETViewSet)
+
 
 # Core app routes
 router.register(r'institutional-support', InstitutionalSupportViewSet)
@@ -45,4 +45,5 @@ urlpatterns = [
     path('api/', include(router.urls)),
     path('api/auth/', include('users.urls')),
     path('api-auth/', include('rest_framework.urls')),
+    path('api/dashboard-stats/', DashboardStatsView.as_view()),
 ]

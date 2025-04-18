@@ -1,10 +1,10 @@
 from django.db import models
 
 class Assessment(models.Model):
-    Assessment_id = models.BigAutoField(primary_key=True)
+    Assessment = models.BigAutoField(primary_key=True)
     name = models.CharField(max_length=100)
     date = models.DateField()
-    program_ID = models.BigIntegerField()
+    course = models.ForeignKey('programs.Course', on_delete=models.CASCADE, related_name='Assessment')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -17,7 +17,8 @@ class ContinuousImprovement(models.Model):
     effectiveness_measure = models.TextField()
     weight = models.IntegerField()
     score = models.FloatField()
-    assessment_id = models.BigIntegerField()
+    assessment_id = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name='continuous_improvements')
+    action_taken = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -34,7 +35,7 @@ class AcademicPerformance(models.Model):
     course_id = models.BigIntegerField()
     instructor_id = models.BigIntegerField()
     description = models.TextField()
-    assessment_id = models.BigIntegerField()
+    assessment_id = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name='academic_performances')
     
     def __str__(self):
         return f"Academic Performance for Assessment {self.assessment_id}"
@@ -43,7 +44,7 @@ class AssessmentLearningOutcome(models.Model):
     AssesssmentLearningOutcome_id = models.BigAutoField(primary_key=True)
     description = models.TextField()
     program_id = models.BigIntegerField()
-    assessment_id = models.BigIntegerField()
+    assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name='learning_outcomes')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -51,11 +52,15 @@ class AssessmentLearningOutcome(models.Model):
         return f"Learning Outcome for Assessment {self.assessment_id}"
 
 class AssessmentLearningOutcome_ABET(models.Model):
+    learning_outcome = models.ForeignKey(
+        AssessmentLearningOutcome,
+        on_delete=models.CASCADE,
+        related_name='abet_outcomes'
+    )
+    ABETOutcomes_id = models.BigIntegerField()
+    LearningOutcome_id = models.BigIntegerField()  
     weight = models.IntegerField()
     score = models.IntegerField()
-    ABETOutcomes_id = models.BigIntegerField()
-    AssessmentLearningoutcome_id = models.BigIntegerField()
-    LearningOutcome_id = models.BigIntegerField()
-    
+
     def __str__(self):
-        return f"ABET Outcome {self.ABETOutcomes_id} for Assessment {self.AssessmentLearningoutcome_id}"
+        return f"ABET Outcome {self.ABETOutcomes_id} for LO {self.learning_outcome.id}"
