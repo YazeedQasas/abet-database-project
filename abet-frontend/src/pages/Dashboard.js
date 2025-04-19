@@ -5,6 +5,7 @@ import assessmentService from '../services/assessmentService';
 import './Dashboard.css';
 import { FaUniversity, FaBuilding, FaBook, FaClipboardList, FaChartLine, FaCheckCircle } from 'react-icons/fa';
 import { MdAssessment, MdOutlineReport, MdDashboard } from 'react-icons/md';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -20,16 +21,18 @@ const Dashboard = () => {
   const [complianceColor, setComplianceColor] = useState('#808080');
   const [abetAssessments, setAbetAssessments] = useState([]);
   const [selectedAssessment, setSelectedAssessment] = useState(null);
+  const [evidenceStats, setEvidenceStats] = useState({ direct: 0, indirect: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [statsRes, abetRes, avgRes] = await Promise.all([
+        const [statsRes, abetRes, avgRes, evidenceRes] = await Promise.all([
           api.get('dashboard-stats/'),
           assessmentService.getAssessments(),
-          api.get('assessments/average-score/')
+          api.get('assessments/average-score/'),
+          api.get('abet-outcomes/')
         ]);
 
         setStats({
@@ -41,6 +44,11 @@ const Dashboard = () => {
 
         setAverageScore(avgRes.data.average_score || 0);
         setAbetAssessments(abetRes.data);
+
+        // Count direct vs indirect evidence
+        const directCount = evidenceRes.data.filter(e => e.evidence_type === 'direct').length;
+        const indirectCount = evidenceRes.data.filter(e => e.evidence_type === 'indirect').length;
+        setEvidenceStats({ direct: directCount, indirect: indirectCount });
 
         if (abetRes.data.length > 0) {
           const firstId = abetRes.data[0].id;
@@ -59,15 +67,10 @@ const Dashboard = () => {
   }, []);
 
   const fetchAssessmentComponents = async (assessmentId) => {
-    if (!assessmentId) {
-      console.warn('fetchAssessmentComponents called without a valid assessmentId');
-      return;
-    }
-  
+    if (!assessmentId) return;
     try {
       const scoreResponse = await assessmentService.calculateAssessmentScore(assessmentId);
       const scoreData = scoreResponse.data;
-  
       setWeightedAverage(scoreData.total_score);
       setComplianceColor(getComplianceColor(scoreData.total_score));
       setComponentScores({
@@ -75,15 +78,11 @@ const Dashboard = () => {
         academicPerformance: scoreData.academic_performance_score,
         learningOutcome: scoreData.learning_outcome_score
       });
-  
-      console.log("Assessment score calculated:", scoreData);
     } catch (error) {
       console.error('Error calculating assessment components:', error);
       setWeightedAverage(null);
     }
   };
-  
-  
 
   const getComplianceColor = (percentage) => {
     if (percentage >= 90) return '#4CAF50';
@@ -112,14 +111,10 @@ const Dashboard = () => {
   const calculateComponentAverage = (type) => {
     if (!componentScores) return 'N/A';
     switch (type) {
-      case 'continuous-improvement':
-        return Math.round(componentScores.continuousImprovement || 0);
-      case 'academic-performance':
-        return Math.round(componentScores.academicPerformance || 0);
-      case 'learning-outcome':
-        return Math.round(componentScores.learningOutcome || 0);
-      default:
-        return 'N/A';
+      case 'continuous-improvement': return Math.round(componentScores.continuousImprovement || 0);
+      case 'academic-performance': return Math.round(componentScores.academicPerformance || 0);
+      case 'learning-outcome': return Math.round(componentScores.learningOutcome || 0);
+      default: return 'N/A';
     }
   };
 
@@ -131,6 +126,8 @@ const Dashboard = () => {
       </div>
     );
   }
+
+  
 
   return (
     <div className="dashboard">
@@ -201,6 +198,7 @@ const Dashboard = () => {
           <div className="compliance-card">
             <div className="card-header">
               <FaChartLine />
+              
               <h2>ABET Assessment Score</h2>
             </div>
             <div className="compliance-body">

@@ -17,6 +17,8 @@ import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import Unauthorized from './pages/auth/Unauthorized';
 import PublicOnlyRoute  from './components/common/PublicOnlyRoute';
+import CreateContinuousImprovement from './pages/assessment/CreateContinuousImprovement'; // adjust path if needed
+
 
 function App() {
   return (
@@ -117,6 +119,12 @@ function App() {
             </ProtectedRoute>
           } />
           
+          <Route path="/continuous-improvements/new" element={
+            <Layout>
+            <CreateContinuousImprovement />
+            </Layout>} 
+            />
+
         </Routes>
       </Router>
     </AuthProvider>

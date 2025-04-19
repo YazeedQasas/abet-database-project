@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../services/api';
 import './AssessmentList.css';
+import { MdAssessment } from 'react-icons/md';
 
 const AssessmentList = () => {
   const [assessments, setAssessments] = useState([]);
+  const [scores, setScores] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -12,7 +14,22 @@ const AssessmentList = () => {
     const fetchAssessments = async () => {
       try {
         const response = await api.get('/assessments/');
-        setAssessments(response.data.results || response.data); // Handle potential paginated response
+        const fetched = (response.data.results || response.data).map(a => ({
+          ...a,
+          id: a.id || a.Assessment,
+        }));
+        setAssessments(fetched);
+
+        const scoreResults = await Promise.all(
+          fetched.map((a) => api.get(`/assessments/${a.id}/calculate-score/`))
+        );
+
+        const scoreMap = {};
+        scoreResults.forEach((res, index) => {
+          scoreMap[fetched[index].id] = res.data.total_score;
+        });
+
+        setScores(scoreMap);
       } catch (err) {
         console.error('Error fetching assessments:', err.response?.data || err.message);
         setError('Failed to load assessments.');
@@ -24,29 +41,36 @@ const AssessmentList = () => {
     fetchAssessments();
   }, []);
 
-  if (loading) return <p>Loading...</p>;
-  if (error) return <p className="error-message">{error}</p>;
+  if (loading) return <div className="assessment-list loading">Loading assessments...</div>;
+  if (error) return <div className="assessment-list error-message">{error}</div>;
 
   return (
-    <div className="assessment-list-container">
-      <h2>Assessments</h2>
-      <Link to="/assessments/new" className="btn-create-assessment">Create New Assessment</Link>
+      <div className="assessment-list dashboard">
+            <div className="dashboard-header">
+                <div className="header-top">
+                  <div className="header-content">
+                    <MdAssessment className="header-icon" />
+                      <h1>Assessment Records</h1>
+                    </div>
+                  <Link to="/assessments/new" className="btn primary">Create New Assessment</Link>
+                </div>
+              <p className="header-subtitle">Browse and review submitted ABET assessments.</p>
+            </div>
+
       {assessments.length === 0 ? (
-        <p>No assessments found.</p>
+        <p className="empty-state">No assessments found. Start by creating one.</p>
       ) : (
-        <ul className="assessment-list">
+        <div className="grid-cards">
           {assessments.map((assessment) => (
-            <li key={assessment.id}>
-              <h3>Assessment {assessment.id}</h3>
-              <p>Date: {assessment.date}</p>
-              <p>Type: {assessment.assessment_type}</p>
-              <p>Compliance Score: {assessment.compliance_score?.toFixed(2) || 'N/A'}</p>
-              <Link to={`/assessments/${assessment.id}`} className="view-details-link">
-                View Details
-              </Link>
-            </li>
+            <div className="assessment-card" key={assessment.id}>
+              <h3>{assessment.name}</h3>
+              <p><strong>Date:</strong> {new Date(assessment.date).toLocaleDateString()}</p>
+              <p><strong>Course:</strong> {assessment.course}</p>
+              <p><strong>Score:</strong> {scores[assessment.id]?.toFixed(2) ?? 'Calculating...'}</p>
+              <Link to={`/assessments/${assessment.id}`} className="btn secondary">View Details</Link>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );
