@@ -1,22 +1,22 @@
 from rest_framework import viewsets, permissions
 from .models import Department, Faculty, Program, ProgramEducationalObjective, Course, Student, CourseStudent
 from .serializer import DepartmentSerializer, FacultySerializer, ProgramSerializer, ProgramEducationalObjectiveSerializer, CourseSerializer, StudentSerializer, CourseStudentSerializer
-from users.permissions import IsAdmin, IsFaculty, IsEvaluator, IsReviewer, IsFacultyForProgram
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from users.permissions import IsAdminUserType
 
 
 class DepartmentViewSet(viewsets.ModelViewSet):
     queryset = Department.objects.all()
     serializer_class = DepartmentSerializer
-    
+    permission_classes = [IsAuthenticated, IsAdminUserType]
+
     def get_permissions(self):
-        # Allow anyone to list departments (needed for registration)
-        if self.action == 'list':
-            return [AllowAny()]
-        # Require authentication for other actions
-        return [IsAuthenticated()]
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [IsAuthenticated(), IsAdminUserType()]  # Only admin can create/update/delete
+        return [IsAuthenticated()]  # Anyone logged in can view
+
 
 class FacultyViewSet(viewsets.ModelViewSet):
     queryset = Faculty.objects.all()
@@ -39,6 +39,11 @@ class ProgramViewSet(viewsets.ModelViewSet):
         courses = Course.objects.filter(program=program)
         serializer = CourseSerializer(courses, many=True)
         return Response(serializer.data)
+    
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [IsAuthenticated(), IsAdminUserType()]  # Only admin can create/update/delete
+        return [IsAuthenticated()]  # Anyone logged in can view
 
 
 class ProgramEducationalObjectiveViewSet(viewsets.ModelViewSet):
@@ -48,6 +53,11 @@ class ProgramEducationalObjectiveViewSet(viewsets.ModelViewSet):
 class CourseViewSet(viewsets.ModelViewSet):
     queryset = Course.objects.all()
     serializer_class = CourseSerializer
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [IsAuthenticated(), IsAdminUserType()]  # Only admin can create/update/delete
+        return [IsAuthenticated()]  # Anyone logged in can view
+
 
 class StudentViewSet(viewsets.ModelViewSet):
     queryset = Student.objects.all()

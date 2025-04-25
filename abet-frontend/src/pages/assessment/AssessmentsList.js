@@ -46,14 +46,12 @@ const AssessmentList = () => {
 
   return (
       <div className="assessment-list dashboard">
-            <div className="dashboard-header">
-                <div className="header-top">
-                  <div className="header-content">
-                    <MdAssessment className="header-icon" />
-                      <h1>Assessment Records</h1>
-                    </div>
-                  <Link to="/assessments/new" className="btn primary">Create New Assessment</Link>
-                </div>
+            <div className="centered-header">
+                <div className="header-content">
+                  <MdAssessment className="header-icon" />
+                    <h1>Assessment Records</h1>
+                  </div>
+                <Link to="/assessments/new" className="btn primary">Create New Assessment</Link>
               <p className="header-subtitle">Browse and review submitted ABET assessments.</p>
             </div>
 
