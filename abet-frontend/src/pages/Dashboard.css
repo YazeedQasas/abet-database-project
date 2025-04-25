@@ -4,12 +4,15 @@
 .dashboard {
   display: flex;
   flex-direction: column;
-  padding: 2rem;
   font-family: 'Inter', sans-serif;
   background-color: #f5f7fa;
   min-height: 100vh;
-  gap: 1.5rem;
+  gap: 2rem;
   color: #333;
+  min-width: 140vh;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  padding-top: 35px;
 }
 
 /* Loading State */
@@ -70,8 +73,8 @@
 
 /* Dashboard Content */
 .dashboard-content {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: auto auto;
   gap: 1.5rem;
 }
 
@@ -142,24 +145,21 @@
   opacity: 1;
 }
 
-/* Main Content Area - 2 Columns */
+
 .main-content {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 1.5rem;
 }
 
-/* Card Shared Styles */
-.compliance-card,
-.quick-actions-card {
-  background-color: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-  overflow: hidden;
-  transition: transform 0.2s, box-shadow 0.2s;
+
+.main-content > * {
+  min-height: 100%;
   display: flex;
   flex-direction: column;
 }
+
+
 
 .compliance-card:hover,
 .quick-actions-card:hover {
@@ -187,12 +187,12 @@
   color: #1e293b;
 }
 
-/* Compliance Card */
 .compliance-body {
   display: flex;
   padding: 1.5rem;
   align-items: center;
   gap: 2rem;
+  flex: 1;
 }
 
 .progress-circle-container {
@@ -436,3 +436,24 @@
   }
 }
 
+.content-wrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 0 1rem;
+}
+
+.compliance-card,
+.quick-actions-card {
+  display: flex;
+  flex-direction: column;
+  background-color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border-radius: 10px;
+}
+
+.dashboard-lower {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}

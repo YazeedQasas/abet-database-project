@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'assessment',
     'programs',
     'users',
+    'reports',
 
     'rest_framework',
     'rest_framework.authtoken',
@@ -69,9 +70,19 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 
     'corsheaders.middleware.CorsMiddleware',
+    'assessment.middleware.CurrentUserMiddleware',
 ]
 
 CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+]
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^http://localhost:3000$",
+]
+
+CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
 ]
 

@@ -3,11 +3,13 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import (
     Assessment, ContinuousImprovement, AcademicPerformance, 
-    AssessmentLearningOutcome, AssessmentLearningOutcome_ABET
+    AssessmentLearningOutcome, AssessmentLearningOutcome_ABET, AuditLog, ABETOutcome,
+    AssessmentEvent
 )
 from .serializers import (
     AssessmentSerializer, ContinuousImprovementSerializer, AcademicPerformanceSerializer,
-    AssessmentLearningOutcomeSerializer, AssessmentLearningOutcomeABETSerializer
+    AssessmentLearningOutcomeSerializer, AssessmentLearningOutcomeABETSerializer, AuditLogSerializer,
+    ABETOutcomeSerializer, AssessmentEventSerializer
 )
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -17,6 +19,20 @@ from programs.models import Course
 from programs.models import Department
 
 from .services import AssessmentService
+from users.permissions import IsAdminUserType, IsFacultyOrAdmin
+from rest_framework.permissions import IsAuthenticated
+from assessment.utilsLog.event_logger import log_assessment_event
+
+
+
+
+class AuditLogListAPIView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminUserType]
+
+    def get(self, request):
+        logs = AuditLog.objects.all().order_by('-timestamp')[:50]  # Latest 50
+        serializer = AuditLogSerializer(logs, many=True)
+        return Response(serializer.data)
 
 class DashboardStatsView(APIView):
     permission_classes = [AllowAny]
@@ -30,9 +46,27 @@ class DashboardStatsView(APIView):
         })
 
 class AssessmentViewSet(viewsets.ModelViewSet):
-    queryset = Assessment.objects.all()
     serializer_class = AssessmentSerializer
-    permission_classes = [permissions.AllowAny]
+    queryset = Assessment.objects.all()
+
+
+    def get_permissions(self):
+        if self.request.method in ['POST', 'PUT', 'DELETE']:
+            return [IsAuthenticated(), IsFacultyOrAdmin()]
+        return [AllowAny()]
+    
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        instance._current_user = self.request.user
+        instance.save()
+        log_assessment_event(instance, self.request.user ,'CREATE')
+        
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        instance._current_user = self.request.user
+        instance.save()
+        log_assessment_event(instance, self.request.user,  'UPDATE')
+        
     
     @action(detail=True, methods=['get'], url_path='calculate-score')
     def calculate_score(self, request, pk=None):
@@ -112,43 +146,133 @@ class AssessmentViewSet(viewsets.ModelViewSet):
             })
 
         return Response(result)
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+
+        if request.user.is_authenticated:
+            AuditLog.objects.create(
+                user=request.user,
+                action='DELETE',
+                target_model='Assessment',
+                target_id=instance.id,  # ✅ Now it's still available
+                changes=f"Deleted {instance.name}"
+            )
+
+            self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 
 
 class ContinuousImprovementViewSet(viewsets.ModelViewSet):
-    queryset = ContinuousImprovement.objects.all()
+    queryset = ContinuousImprovement.objects.all() 
     serializer_class = ContinuousImprovementSerializer
     
     def get_queryset(self):
-        queryset = ContinuousImprovement.objects.all()
+        queryset = super().get_queryset()
         assessment_id = self.request.query_params.get('assessment_id', None)
         if assessment_id is not None:
             queryset = queryset.filter(assessment_id=assessment_id)
         return queryset
+    def perform_create(self, serializer):
+        user = self.request.user
+        instance = serializer.save()
+        instance._current_user = user
+        instance.save()
+
+        # 👇 Move this here: AFTER saving, so data exists now
+        try:
+            pre_score = AssessmentService.get_average_score()
+        except Exception:
+            pre_score = 0.0
+
+        AssessmentEvent.objects.create(
+            assessment_id=instance.assessment_id.id,
+            assessment_name=f"{instance.assessment_id.name} - Continuous Improvement",
+            event_type='UPDATE',
+            score=pre_score,
+            average_score_at_time=pre_score,
+            user=user
+        )
+    
 
 class AcademicPerformanceViewSet(viewsets.ModelViewSet):
-    queryset = AcademicPerformance.objects.all()
+    queryset = AcademicPerformance.objects.all()  
     serializer_class = AcademicPerformanceSerializer
     
     def get_queryset(self):
-        queryset = AcademicPerformance.objects.all()
+        queryset = super().get_queryset()
         assessment_id = self.request.query_params.get('assessment_id', None)
         if assessment_id is not None:
             queryset = queryset.filter(assessment_id=assessment_id)
         return queryset
 
+    def perform_create(self, serializer):
+        user = self.request.user
+        instance = serializer.save()
+        instance._current_user = user
+        instance.save()
+
+        # 👇 Move this here: AFTER saving, so data exists now
+        try:
+            pre_score = AssessmentService.get_average_score()
+        except Exception:
+            pre_score = 0.0
+
+        AssessmentEvent.objects.create(
+            assessment_id=instance.assessment_id.id,
+            assessment_name=f"{instance.assessment_id.name} - Continuous Improvement",
+            event_type='UPDATE',
+            score=pre_score,
+            average_score_at_time=pre_score,
+            user=user
+        )
+
 class AssessmentLearningOutcomeViewSet(viewsets.ModelViewSet):
-    queryset = AssessmentLearningOutcome.objects.all()
+    queryset = AssessmentLearningOutcome.objects.all()  # Keep this for URL generation
     serializer_class = AssessmentLearningOutcomeSerializer
     
     def get_queryset(self):
-        queryset = AssessmentLearningOutcome.objects.all()
+        queryset = super().get_queryset()
         assessment_id = self.request.query_params.get('assessment_id', None)
         if assessment_id is not None:
-            queryset = queryset.filter(assessment_id=assessment_id)
+            queryset = queryset.filter(assessment=assessment_id)
         return queryset
+    
+    def perform_create(self, serializer):
+        user = self.request.user
+        instance = serializer.save()
+        instance._current_user = user
+        instance.save()
+
+        # 👇 Move this here: AFTER saving, so data exists now
+        try:
+            pre_score = AssessmentService.get_average_score()
+        except Exception:
+            pre_score = 0.0
+
+        AssessmentEvent.objects.create(
+            assessment_id=instance.assessment_id.id,
+            assessment_name=f"{instance.assessment_id.name} - Continuous Improvement",
+            event_type='UPDATE',
+            score=pre_score,
+            average_score_at_time=pre_score,
+            user=user
+        )
 
 class AssessmentLearningOutcomeABETViewSet(viewsets.ModelViewSet):
     queryset = AssessmentLearningOutcome_ABET.objects.all()
     serializer_class = AssessmentLearningOutcomeABETSerializer
+
+class ABETOutcomeViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = ABETOutcome.objects.all()
+    serializer_class = ABETOutcomeSerializer
+
+class AssessmentEventViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = AssessmentEventSerializer
+    queryset = AssessmentEvent.objects.all().order_by('-timestamp')
+    
+    def get_permissions(self):
+        if self.action == 'list':
+            return [AllowAny()]
+        return [IsAuthenticated()]

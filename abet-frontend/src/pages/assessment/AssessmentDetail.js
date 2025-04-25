@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
-import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
-} from 'recharts';
+
 import './AssessmentDetail.css';
 
 const AssessmentDetail = () => {
@@ -15,7 +13,6 @@ const AssessmentDetail = () => {
   const [continuousImprovements, setContinuousImprovements] = useState([]);
   const [academicPerformances, setAcademicPerformances] = useState([]);
   const [learningOutcomes, setLearningOutcomes] = useState([]);
-  const [scoreHistory, setScoreHistory] = useState([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -24,19 +21,13 @@ const AssessmentDetail = () => {
         const ciRes = await api.get(`/continuous-improvements/?assessment_id=${id}`);
         const apRes = await api.get(`/academic-performances/?assessment_id=${id}`);
         const loRes = await api.get(`/learning-outcomes/?assessment_id=${id}`);
-        const scoreRes = await api.get(`/assessments/${id}/calculate-score/`);
 
         setAssessment(assessmentRes.data);
         setContinuousImprovements(ciRes.data);
         setAcademicPerformances(apRes.data);
         setLearningOutcomes(loRes.data);
 
-        setScoreHistory([
-          {
-            name: new Date(assessmentRes.data.date).toLocaleDateString(),
-            score: scoreRes.data.total_score
-          }
-        ]);
+        
       } catch (err) {
         console.error(err);
         setError('Failed to fetch assessment data.');
@@ -70,23 +61,10 @@ const AssessmentDetail = () => {
           <p className="meta"><strong>Date:</strong> {new Date(assessment.date).toLocaleDateString()}</p>
         </div>
         <div className="action-buttons">
-          <Link to={`/assessments/${id}/edit`} className="btn primary">Edit</Link>
           <button onClick={handleDelete} className="btn danger">Delete</button>
         </div>
       </div>
 
-      <div className="card full-width">
-        <h2>Assessment Score Timeline</h2>
-        <ResponsiveContainer width="100%" height={280}>
-          <LineChart data={scoreHistory} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" />
-            <YAxis domain={[0, 100]} />
-            <Tooltip />
-            <Line type="monotone" dataKey="score" stroke="#3b82f6" strokeWidth={3} dot={{ r: 5 }} />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
 
       <div className="grid-layout">
         <div className="card">
@@ -110,7 +88,9 @@ const AssessmentDetail = () => {
         <div className="card">
           <div className="card-header">
             <h2>Academic Performance</h2>
-            <Link to={`/academic-performances/new?assessment_id=${id}`} className="btn secondary">Add</Link>
+            <Link to={`/assessments/${assessment.id}/academic-performance/new`} className="btn secondary">
+              Add
+            </Link>
           </div>
           {academicPerformances.length === 0 ? <p>No entries yet.</p> : (
             <ul>

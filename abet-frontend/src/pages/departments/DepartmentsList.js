@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../services/api';
+import './DepartmentsList.css';
 
 const DepartmentsList = () => {
   const [departments, setDepartments] = useState([]);
@@ -28,34 +29,23 @@ const DepartmentsList = () => {
 
   return (
     <div className="departments-list">
-      <h2>Departments</h2>
-      <Link to="/departments/new" className="btn-add">Add New Department</Link>
-      
-      {departments.length === 0 ? (
-        <p>No departments found. Create your first department.</p>
-      ) : (
-        <table className="departments-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {departments.map(department => (
-              <tr key={department.id}>
-                <td>{department.name}</td>
-                <td>{department.email}</td>
-                <td>
-                  <Link to={`/departments/${department.id}`}>View</Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+  <h2>Departments</h2>
+  <Link to="/departments/new" className="btn-add">Add New Department</Link>
+
+  {departments.length === 0 ? (
+    <p>No departments found. Create your first department.</p>
+  ) : (
+    <div className="departments-grid">
+      {departments.map(dept => (
+        <div className="department-card" key={dept.id}>
+          <h3>{dept.name}</h3>
+          <p>{dept.email}</p>
+          <Link to={`/departments/${dept.id}`}>View Details →</Link>
+        </div>
+      ))}
     </div>
+  )}
+</div>
   );
 };
 

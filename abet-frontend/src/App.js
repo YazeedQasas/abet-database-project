@@ -17,9 +17,15 @@ import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import Unauthorized from './pages/auth/Unauthorized';
 import PublicOnlyRoute  from './components/common/PublicOnlyRoute';
-import CreateContinuousImprovement from './pages/assessment/CreateContinuousImprovement'; // adjust path if needed
-
-
+import CreateContinuousImprovement from './pages/assessment/CreateContinuousImprovement'; 
+import AuditLog from './components/AuditLog'; 
+import ArchiveViewer from './pages/ArchiveViewer';
+import ReportsFeed from './components/Reports/ReportsFeed';
+import CreateReport from './components/Reports/CreateReport';
+import CourseForm from './pages/courses/CourseForm'
+import CourseList from './pages/courses/CourseList'
+import CreateAcademicPerformance from './pages/assessment/CreateAcademicPerformance';
+import CreateLearningOutcome from './pages/assessment/CreateLearningOutcome'
 function App() {
   return (
     <AuthProvider>
@@ -124,6 +130,54 @@ function App() {
             <CreateContinuousImprovement />
             </Layout>} 
             />
+
+          <Route path="/audit-logs" element={
+          <Layout>
+          <AuditLog />
+          </Layout>
+        } 
+          />
+
+      <Route path="/archive" element={
+        <Layout>
+        <ArchiveViewer />
+        </Layout>
+        } />
+
+      <Route path="/reports" element={
+        <Layout>
+        <ReportsFeed />
+        </Layout>
+        } />
+      <Route path="/reports/new" element={
+        <Layout>
+            <CreateReport />
+        </Layout> 
+        } />
+
+      <Route path="/courses" element={
+        <Layout>
+        <CourseList/>
+        </Layout>
+        } />
+      <Route path="/courses/new" element={
+        <Layout>
+        <CourseForm />
+        </Layout>
+        } />
+      <Route path="/assessments/:id/academic-performance/new" element={
+        <Layout>
+        <CreateAcademicPerformance />
+        </Layout>
+        } />
+        <Route path="/learning-outcomes/new" element={
+          <Layout>
+          <CreateLearningOutcome />
+          </Layout>
+          } />
+
+
+
 
         </Routes>
       </Router>
