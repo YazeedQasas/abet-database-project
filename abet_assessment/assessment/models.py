@@ -140,3 +140,107 @@ class AssessmentEvent(models.Model):
     
     def __str__(self):
         return f"{self.event_type} - {self.assessment_name} ({self.timestamp})"
+
+class ABETComplianceMetric(models.Model):
+    METRIC_TYPES = [
+        ('course_syllabi', 'Course Syllabi Updated'),
+        ('assessment_data', 'Assessment Data Collected'),
+        ('student_outcomes', 'Student Outcomes Met'),
+        ('faculty_training', 'Faculty Training Complete'),
+    ]
+    
+    metric_type = models.CharField(max_length=20, choices=METRIC_TYPES, unique=True)
+    current_value = models.FloatField(default=0.0)
+    target_value = models.FloatField(default=100.0)
+    last_updated = models.DateTimeField(auto_now=True)
+    academic_year = models.CharField(max_length=9, default='2024-2025')
+    
+    def get_percentage(self):
+        if self.target_value > 0:
+            return min(100.0, (self.current_value / self.target_value) * 100)
+        return 0.0
+    
+    def get_status(self):
+        percentage = self.get_percentage()
+        if percentage >= 95:
+            return 'excellent'
+        elif percentage >= 80:
+            return 'good'
+        elif percentage >= 60:
+            return 'warning'
+        else:
+            return 'critical'
+    
+    def __str__(self):
+        return f"{self.get_metric_type_display()}: {self.get_percentage():.1f}%"
+
+class CourseSyllabus(models.Model):
+    course = models.OneToOneField('programs.Course', on_delete=models.CASCADE, related_name='syllabus')
+    is_updated = models.BooleanField(default=False)
+    last_updated = models.DateTimeField(null=True, blank=True)
+    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    academic_year = models.CharField(max_length=9, default='2024-2025')
+    
+    def __str__(self):
+        return f"Syllabus for {self.course.name}"
+
+class FacultyTraining(models.Model):
+    faculty = models.ForeignKey('programs.Faculty', on_delete=models.CASCADE, related_name='trainings')
+    training_type = models.CharField(max_length=100)
+    completion_date = models.DateField(null=True, blank=True, default=None)
+    is_completed = models.BooleanField(default=False)
+    academic_year = models.CharField(max_length=9, default='2024-2025')
+    
+    def __str__(self):
+        return f"{self.faculty.name} - {self.training_type}"
+
+class AssessmentMethod(models.Model):
+    ASSESSMENT_TYPES = [
+        ('direct', 'Direct Assessment'),
+        ('indirect', 'Indirect Assessment'),
+    ]
+    
+    METHOD_TYPES = [
+        ('exam_questions', 'Exam Questions'),
+        ('project_rubrics', 'Project Rubrics'),
+        ('student_surveys', 'Student Surveys'),
+        ('alumni_feedback', 'Alumni Feedback'),
+        ('lab_reports', 'Lab Reports'),
+        ('capstone_projects', 'Capstone Projects'),
+    ]
+    
+    name = models.CharField(max_length=100, choices=METHOD_TYPES)
+    assessment_type = models.CharField(max_length=20, choices=ASSESSMENT_TYPES)
+    description = models.TextField()
+    target_completion_rate = models.FloatField(default=80.0)  # Target percentage
+    target_score = models.FloatField(default=3.0)  # Target average score
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class CourseAssessmentMethod(models.Model):
+    course = models.ForeignKey('programs.Course', on_delete=models.CASCADE)
+    assessment_method = models.ForeignKey(AssessmentMethod, on_delete=models.CASCADE)
+    assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE)
+    completion_status = models.BooleanField(default=False)
+    score = models.FloatField(null=True, blank=True)
+    completion_date = models.DateField(null=True, blank=True)
+    semester = models.CharField(max_length=20, default='Fall 2024')
+    
+    class Meta:
+        unique_together = ['course', 'assessment_method', 'assessment']
+
+class ComplianceMetric(models.Model):
+    METRIC_TYPES = [
+        ('completion_rate', 'Completion Rate'),
+        ('average_score', 'Average Score'),
+        ('time_to_completion', 'Time to Completion'),
+        ('abet_coverage', 'ABET Outcome Coverage'),
+    ]
+    
+    name = models.CharField(max_length=100)
+    metric_type = models.CharField(max_length=30, choices=METRIC_TYPES)
+    target_value = models.FloatField()
+    current_value = models.FloatField()
+    measurement_date = models.DateField(auto_now_add=True)
+    semester = models.CharField(max_length=20, default='Fall 2024')
+    is_compliant = models.BooleanField(default=False)

@@ -2,10 +2,30 @@ from rest_framework import serializers
 from .models import (
     Assessment, ContinuousImprovement, AcademicPerformance, 
     AssessmentLearningOutcome, AssessmentLearningOutcome_ABET, AuditLog,
-    AssessmentEvent
+    AssessmentEvent, FacultyTraining
 )
-
 from .services import AssessmentService
+from datetime import date
+
+class FacultyTrainingSerializer(serializers.ModelSerializer):
+    faculty_name = serializers.CharField(source='faculty.name', read_only=True)
+    faculty_email = serializers.CharField(source='faculty.email', read_only=True)
+    completion_date = serializers.DateField(required=False, allow_null=True)  # Allow null dates
+    
+    def validate(self, data):
+        # If training is marked as completed, require a completion date
+        if data.get('is_completed') and not data.get('completion_date'):
+            data['completion_date'] = date.today()  # Auto-set to today if not provided
+        
+        # If training is not completed, clear the completion date
+        if not data.get('is_completed'):
+            data['completion_date'] = None
+            
+        return data
+
+    class Meta:
+        model = FacultyTraining
+        fields = '__all__'
 
 class AssessmentSerializer(serializers.ModelSerializer):
     score = serializers.SerializerMethodField()
@@ -85,3 +105,4 @@ class AssessmentEventSerializer(serializers.ModelSerializer):
         model = AssessmentEvent
         fields = ['id', 'assessment_id', 'assessment_name', 'event_type', 
                   'score', 'timestamp', 'username', 'average_score_at_time']
+
