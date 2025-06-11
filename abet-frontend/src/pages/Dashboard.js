@@ -528,7 +528,6 @@ const Dashboard = () => {
         {activeTab === "overview" && (
           <div className="overview-content">
             {/* Key Metrics */}
-            {/* Key Metrics */}
             <div className="metrics-grid">
               {(progressMetrics.length > 0
                 ? progressMetrics
@@ -539,14 +538,25 @@ const Dashboard = () => {
 
                 // Determine display values
                 let displayValue = metric.percentage || parseInt(metric.value);
+                let displayTarget = metric.target; // SIMPLIFIED: Just use the target as-is
                 let displayStatus = metric.status;
                 let displayDetails = null;
+                let isStudentOutcomes = false;
 
-                // Override for Faculty Training metrics
+                // Special handling for Student Outcomes
                 if (
-                  metric.name === "Faculty Training" ||
-                  metric.metric === "Faculty Training Complete" ||
-                  metric.title === "Faculty Training Complete"
+                  metric.title === "Student Outcomes Met" ||
+                  metric.name === "Student Outcomes Met"
+                ) {
+                  isStudentOutcomes = true;
+                  displayValue = metric.percentage; // This will be "7/10"
+                  displayTarget = `Target: ${metric.target}`; // This will be "Target: 8/10"
+                  displayDetails = `${metric.current} of ${metric.total} outcomes meeting threshold`;
+                }
+                // Override for Faculty Training metrics
+                else if (
+                  metric.title === "Faculty Training Complete" ||
+                  metric.name === "Faculty Training Complete"
                 ) {
                   if (realTimeStats) {
                     displayValue = realTimeStats.completionRate;
@@ -558,38 +568,51 @@ const Dashboard = () => {
                         : "critical";
                     displayDetails = `${realTimeStats.completed} of ${realTimeStats.total} completed`;
                   }
+                  displayTarget = `Target: ${metric.target}%`;
+                }
+                // For all other metrics, just add "Target: " and "%"
+                else {
+                  displayTarget = `Target: ${metric.target}%`;
                 }
 
                 return (
                   <div key={index} className="metric-card">
                     <div className="metric-header">
-                      <h3>{metric.title || metric.name || metric.metric}</h3>
+                      <h3>{metric.title || metric.name}</h3>
                       <span
                         className={`status-indicator ${displayStatus}`}
                       ></span>
                     </div>
                     <div className="metric-value">
-                      <span className="percentage">{displayValue}%</span>
-                      <span className="target">
-                        {metric.target || "Target: 95%"}
+                      <span className="percentage">
+                        {isStudentOutcomes ? displayValue : `${displayValue}%`}
                       </span>
+                      <span className="target">{displayTarget}</span>
                     </div>
                     <div className="progress-bar">
                       <div
                         className={`progress-fill ${displayStatus}`}
-                        style={{ width: `${displayValue}%` }}
+                        style={{
+                          width: `${
+                            isStudentOutcomes
+                              ? metric.current && metric.total
+                                ? (metric.current / metric.total) * 100
+                                : 0
+                              : displayValue
+                          }%`,
+                        }}
                       ></div>
                     </div>
-                    {/* Show real-time details for Faculty Training */}
                     {displayDetails && (
                       <div className="metric-details">{displayDetails}</div>
                     )}
-                    {/* Fallback for other metrics */}
-                    {!displayDetails && metric.current !== undefined && (
-                      <div className="metric-details">
-                        {metric.current} of {metric.total} completed
-                      </div>
-                    )}
+                    {!displayDetails &&
+                      metric.current !== undefined &&
+                      !isStudentOutcomes && (
+                        <div className="metric-details">
+                          {metric.current} of {metric.total} completed
+                        </div>
+                      )}
                   </div>
                 );
               })}

@@ -84,7 +84,7 @@ class DashboardStatsView(APIView):
             
             # Get dynamic compliance metrics
             try:
-                compliance_metrics = AssessmentService.calculate_dynamic_compliance_metrics()
+                compliance_metrics = AssessmentService.calculatedynamiccompliancemetrics()
                 print(f"📈 Compliance metrics calculated successfully")
                 
                 # Format progress metrics for your dashboard
@@ -92,7 +92,7 @@ class DashboardStatsView(APIView):
                     {
                         'title': compliance_metrics['course_syllabi']['name'],
                         'percentage': compliance_metrics['course_syllabi']['percentage'],
-                        'target': f"Target: {compliance_metrics['course_syllabi']['target']}%",
+                        'target': f"{compliance_metrics['course_syllabi']['target']}",
                         'status': compliance_metrics['course_syllabi']['status'],
                         'current': compliance_metrics['course_syllabi']['current'],
                         'total': compliance_metrics['course_syllabi']['total']
@@ -100,7 +100,7 @@ class DashboardStatsView(APIView):
                     {
                         'title': compliance_metrics['assessment_data']['name'],
                         'percentage': compliance_metrics['assessment_data']['percentage'],
-                        'target': f"Target: {compliance_metrics['assessment_data']['target']}%",
+                        'target': f"{compliance_metrics['assessment_data']['target']}",
                         'status': compliance_metrics['assessment_data']['status'],
                         'current': compliance_metrics['assessment_data']['current'],
                         'total': compliance_metrics['assessment_data']['total']
@@ -108,7 +108,7 @@ class DashboardStatsView(APIView):
                     {
                         'title': compliance_metrics['student_outcomes']['name'],
                         'percentage': compliance_metrics['student_outcomes']['percentage'],
-                        'target': f"Target: {compliance_metrics['student_outcomes']['target']}%",
+                        'target': f"{compliance_metrics['student_outcomes']['target']}",
                         'status': compliance_metrics['student_outcomes']['status'],
                         'current': compliance_metrics['student_outcomes']['current'],
                         'total': compliance_metrics['student_outcomes']['total']
@@ -116,7 +116,7 @@ class DashboardStatsView(APIView):
                     {
                         'title': compliance_metrics['faculty_training']['name'],
                         'percentage': compliance_metrics['faculty_training']['percentage'],
-                        'target': f"Target: {compliance_metrics['faculty_training']['target']}%",
+                        'target': f"{compliance_metrics['faculty_training']['target']}",
                         'status': compliance_metrics['faculty_training']['status'],
                         'current': compliance_metrics['faculty_training']['current'],
                         'total': compliance_metrics['faculty_training']['total']
