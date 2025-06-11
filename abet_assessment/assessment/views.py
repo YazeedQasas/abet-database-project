@@ -1,16 +1,19 @@
 from rest_framework import viewsets, status, permissions
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
+
 from .models import (
     Assessment, ContinuousImprovement, AcademicPerformance, 
     AssessmentLearningOutcome, AssessmentLearningOutcome_ABET, AuditLog, ABETOutcome,
-    AssessmentEvent
+    AssessmentEvent, FacultyTraining
 )
+
 from .serializers import (
     AssessmentSerializer, ContinuousImprovementSerializer, AcademicPerformanceSerializer,
     AssessmentLearningOutcomeSerializer, AssessmentLearningOutcomeABETSerializer, AuditLogSerializer,
-    ABETOutcomeSerializer, AssessmentEventSerializer
+    ABETOutcomeSerializer, AssessmentEventSerializer, FacultyTrainingSerializer
 )
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
@@ -23,7 +26,31 @@ from users.permissions import IsAdminUserType, IsFacultyOrAdmin
 from rest_framework.permissions import IsAuthenticated
 from assessment.utilsLog.event_logger import log_assessment_event
 
+import traceback
+import sys
 
+import logging
+logger = logging.getLogger(__name__)
+
+
+
+class FacultyTrainingViewSet(viewsets.ModelViewSet):
+    queryset = FacultyTraining.objects.all()
+    serializer_class = FacultyTrainingSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def create(self, request, *args, **kwargs):
+        logger.info(f"=== BACKEND DEBUG ===")
+        logger.info(f"Received data: {request.data}")
+        logger.info(f"Data types: {[(k, type(v)) for k, v in request.data.items()]}")
+        
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            logger.error(f"Serializer errors: {serializer.errors}")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class AuditLogListAPIView(APIView):
@@ -34,16 +61,109 @@ class AuditLogListAPIView(APIView):
         serializer = AuditLogSerializer(logs, many=True)
         return Response(serializer.data)
 
+
+
 class DashboardStatsView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
-        return Response({
-            "programs": Program.objects.count(),
-            "departments": Department.objects.count(),
-            "courses": Course.objects.count(),
-            "assessments": Assessment.objects.count(),
-        })
+        try:
+            print("🔍 DashboardStatsView started...")
+            
+            # Get basic stats
+            basic_stats = AssessmentService.get_dashboard_statistics()
+            print(f"📊 Basic stats: {basic_stats}")
+            
+            # Get ABET outcomes with real calculations
+            abet_outcomes = AssessmentService.get_abet_outcomes_dashboard_data()
+            print(f"🎯 ABET outcomes: {len(abet_outcomes)}")
+            
+            # Get courses data
+            courses_data = AssessmentService.get_courses_assessment_summary()
+            print(f"📚 Courses data: {len(courses_data)}")
+            
+            # Get dynamic compliance metrics
+            try:
+                compliance_metrics = AssessmentService.calculate_dynamic_compliance_metrics()
+                print(f"📈 Compliance metrics calculated successfully")
+                
+                # Format progress metrics for your dashboard
+                progress_metrics = [
+                    {
+                        'title': compliance_metrics['course_syllabi']['name'],
+                        'percentage': compliance_metrics['course_syllabi']['percentage'],
+                        'target': f"Target: {compliance_metrics['course_syllabi']['target']}%",
+                        'status': compliance_metrics['course_syllabi']['status'],
+                        'current': compliance_metrics['course_syllabi']['current'],
+                        'total': compliance_metrics['course_syllabi']['total']
+                    },
+                    {
+                        'title': compliance_metrics['assessment_data']['name'],
+                        'percentage': compliance_metrics['assessment_data']['percentage'],
+                        'target': f"Target: {compliance_metrics['assessment_data']['target']}%",
+                        'status': compliance_metrics['assessment_data']['status'],
+                        'current': compliance_metrics['assessment_data']['current'],
+                        'total': compliance_metrics['assessment_data']['total']
+                    },
+                    {
+                        'title': compliance_metrics['student_outcomes']['name'],
+                        'percentage': compliance_metrics['student_outcomes']['percentage'],
+                        'target': f"Target: {compliance_metrics['student_outcomes']['target']}%",
+                        'status': compliance_metrics['student_outcomes']['status'],
+                        'current': compliance_metrics['student_outcomes']['current'],
+                        'total': compliance_metrics['student_outcomes']['total']
+                    },
+                    {
+                        'title': compliance_metrics['faculty_training']['name'],
+                        'percentage': compliance_metrics['faculty_training']['percentage'],
+                        'target': f"Target: {compliance_metrics['faculty_training']['target']}%",
+                        'status': compliance_metrics['faculty_training']['status'],
+                        'current': compliance_metrics['faculty_training']['current'],
+                        'total': compliance_metrics['faculty_training']['total']
+                    }
+                ]
+                
+                print(f"✅ Progress metrics: {[m['percentage'] for m in progress_metrics]}")
+                
+            except Exception as e:
+                print(f"❌ Compliance metrics failed: {e}")
+                import traceback
+                traceback.print_exc()
+                
+                # Fallback metrics
+                progress_metrics = [
+                    {'title': 'Course Syllabi Updated', 'percentage': 0, 'target': 'Target: 100%', 'status': 'critical'},
+                    {'title': 'Assessment Data Collected', 'percentage': 0, 'target': 'Target: 90%', 'status': 'critical'},
+                    {'title': 'Student Outcomes Met', 'percentage': 0, 'target': 'Target: 80%', 'status': 'critical'},
+                    {'title': 'Faculty Training Complete', 'percentage': 0, 'target': 'Target: 95%', 'status': 'critical'}
+                ]
+            
+            return Response({
+                **basic_stats,
+                'abet_outcomes': abet_outcomes,
+                'courses_data': courses_data,
+                'progress_metrics': progress_metrics,
+                'status': 'success'
+            })
+            
+        except Exception as e:
+            print(f"❌ DashboardStatsView Error: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            return Response({
+                'error': str(e),
+                'programs': 0,
+                'courses': 0,
+                'assessments': 0,
+                'departments': 0,
+                'abet_outcomes': [],
+                'progress_metrics': [],
+                'status': 'error'
+            }, status=500)
+
+
+
 
 class AssessmentViewSet(viewsets.ModelViewSet):
     serializer_class = AssessmentSerializer
@@ -187,7 +307,7 @@ class ContinuousImprovementViewSet(viewsets.ModelViewSet):
             pre_score = 0.0
 
         AssessmentEvent.objects.create(
-            assessment_id=instance.assessment_id.id,
+            assessment_id=instance.assessment_id,
             assessment_name=f"{instance.assessment_id.name} - Continuous Improvement",
             event_type='UPDATE',
             score=pre_score,
@@ -209,27 +329,25 @@ class AcademicPerformanceViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         user = self.request.user
-        instance = serializer.save()
+        instance = serializer.save()  # This saves to database
         instance._current_user = user
-        instance.save()
 
-        # 👇 Move this here: AFTER saving, so data exists now
         try:
             pre_score = AssessmentService.get_average_score()
         except Exception:
             pre_score = 0.0
 
         AssessmentEvent.objects.create(
-            assessment_id=instance.assessment_id.id,
-            assessment_name=f"{instance.assessment_id.name} - Continuous Improvement",
-            event_type='UPDATE',
+            assessment_id=instance.assessment_id,
+            assessment_name=f"{instance.assessment.name} - Academic Performance",
+            event_type='CREATE',
             score=pre_score,
             average_score_at_time=pre_score,
             user=user
         )
 
 class AssessmentLearningOutcomeViewSet(viewsets.ModelViewSet):
-    queryset = AssessmentLearningOutcome.objects.all()  # Keep this for URL generation
+    queryset = AssessmentLearningOutcome.objects.all()
     serializer_class = AssessmentLearningOutcomeSerializer
     
     def get_queryset(self):
@@ -241,24 +359,25 @@ class AssessmentLearningOutcomeViewSet(viewsets.ModelViewSet):
     
     def perform_create(self, serializer):
         user = self.request.user
-        instance = serializer.save()
+        instance = serializer.save()  # This already saves to database
         instance._current_user = user
-        instance.save()
+        # REMOVE THIS LINE: instance.save()  # Don't save again!
 
-        # 👇 Move this here: AFTER saving, so data exists now
+        # Create assessment event
         try:
             pre_score = AssessmentService.get_average_score()
         except Exception:
             pre_score = 0.0
 
         AssessmentEvent.objects.create(
-            assessment_id=instance.assessment_id.id,
-            assessment_name=f"{instance.assessment_id.name} - Continuous Improvement",
-            event_type='UPDATE',
+            assessment_id=instance.assessment.id,  # Use .assessment.id not .assessment_id
+            assessment_name=f"{instance.assessment.name} - Learning Outcome",
+            event_type='CREATE',  # Changed from UPDATE to CREATE
             score=pre_score,
             average_score_at_time=pre_score,
             user=user
         )
+
 
 class AssessmentLearningOutcomeABETViewSet(viewsets.ModelViewSet):
     queryset = AssessmentLearningOutcome_ABET.objects.all()
@@ -276,3 +395,125 @@ class AssessmentEventViewSet(viewsets.ReadOnlyModelViewSet):
         if self.action == 'list':
             return [AllowAny()]
         return [IsAuthenticated()]
+
+@api_view(['GET'])
+def program_averages(request):
+    """Get program averages - placeholder implementation"""
+    # You can implement this based on your existing logic
+    return Response([
+        {
+            "program_name": "Computer Science",
+            "average_score": 85.5
+        },
+        {
+            "program_name": "Software Engineering", 
+            "average_score": 78.2
+        }
+    ])
+
+@api_view(['GET'])
+def abet_accreditation_status(request):
+    """Get ABET accreditation status - placeholder implementation"""
+    return Response([
+        {
+            "program_name": "Computer Science",
+            "average_score": 85.5,
+            "accredited": True
+        }
+    ])
+
+@api_view(['GET'])
+def debug_abet_outcomes(request):
+    """Debug endpoint to check ABET outcomes calculation"""
+    try:
+        from assessment.models import ABETOutcome, AssessmentLearningOutcome_ABET
+        
+        debug_data = []
+        
+        for outcome in ABETOutcome.objects.all():
+            scores = AssessmentLearningOutcome_ABET.objects.filter(abet_outcome=outcome)
+            
+            if scores.exists():
+                score_values = [s.score for s in scores]
+                avg_score = sum(score_values) / len(score_values)
+                percentage = (avg_score / 4.0) * 100
+            else:
+                score_values = []
+                avg_score = 0
+                percentage = 0
+            
+            debug_data.append({
+                'outcome_label': outcome.label,
+                'outcome_description': outcome.description,
+                'raw_scores': score_values,
+                'average_score': avg_score,
+                'percentage': percentage,
+                'scores_count': len(score_values)
+            })
+        
+        return Response({
+            'debug_data': debug_data,
+            'total_outcomes': ABETOutcome.objects.count(),
+            'total_scores': AssessmentLearningOutcome_ABET.objects.count()
+        })
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+def assessment_methods_summary(request):
+    """Get assessment methods compliance summary"""
+    try:
+        methods_summary = AssessmentService.get_assessment_methods_summary()
+        compliance_metrics = AssessmentService.get_compliance_dashboard_metrics()
+        
+        return Response({
+            'methods_summary': methods_summary,
+            'compliance_metrics': compliance_metrics,
+            'status': 'success'
+        })
+    except Exception as e:
+        return Response({
+            'error': str(e),
+            'status': 'error'
+        }, status=500)
+
+@api_view(['GET'])
+def compliance_dashboard(request):
+    """Get comprehensive compliance dashboard data"""
+    try:
+        compliance_data = AssessmentService.get_compliance_dashboard_metrics()
+        
+        return Response({
+            'compliance_overview': {
+                'overall_rate': compliance_data['overall_compliance_rate'],
+                'direct_assessment': compliance_data['direct_assessment_compliance'],
+                'indirect_assessment': compliance_data['indirect_assessment_compliance'],
+                'status': 'compliant' if compliance_data['overall_compliance_rate'] >= 80 else 'non_compliant'
+            },
+            'methods_breakdown': compliance_data['methods_summary'],
+            'trends': compliance_data['compliance_trends'],
+            'summary_stats': {
+                'total_methods': compliance_data['total_methods'],
+                'compliant_methods': compliance_data['compliant_methods'],
+                'non_compliant_methods': compliance_data['total_methods'] - compliance_data['compliant_methods']
+            }
+        })
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def faculty_training_stats(request):
+    total_trainings = FacultyTraining.objects.count()
+    completed_trainings = FacultyTraining.objects.filter(is_completed=True).count()
+    pending_trainings = total_trainings - completed_trainings
+    completion_rate = round((completed_trainings / total_trainings) * 100) if total_trainings > 0 else 0
+        
+    return Response({
+        'total': total_trainings,
+        'completed': completed_trainings,
+        'pending': pending_trainings,
+        'completion_rate': completion_rate,
+        'target': 95  # Set your target completion rate
+        })

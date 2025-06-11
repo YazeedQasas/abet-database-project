@@ -1,606 +1,874 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
-import api from '../services/api';
-import assessmentService from '../services/assessmentService';
-import './Dashboard.css';
-import { FaUniversity, FaBuilding, FaBook, FaClipboardList, FaChartLine, FaCheckCircle, FaHistory } from 'react-icons/fa';
-import { MdAssessment, MdOutlineReport, MdDashboard } from 'react-icons/md';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  TimeScale
-} from 'chart.js';
-import 'chartjs-adapter-date-fns';
-import { Scatter } from 'react-chartjs-2';
-
-// Register ChartJS components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  TimeScale
-);
+import React, { useState, useEffect, useContext } from "react";
+import "./Dashboard.css";
+import { AuthContext } from "../context/AuthContext";
+import { dashboardAPI } from "../services/dashboardAPI";
+import axios from "axios";
 
 const Dashboard = () => {
-  const [stats, setStats] = useState({
-    programs: 0,
-    departments: 0,
-    courses: 0,
-    assessments: 0,
+  const [selectedSemester, setSelectedSemester] = useState("Fall 2024");
+  const [activeTab, setActiveTab] = useState("overview");
+
+  // New state for backend data
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [progressMetrics, setProgressMetrics] = useState([]);
+  const [dashboardData, setDashboardData] = useState({
+    abetOutcomes: [],
+    coursesData: [],
+    assessmentData: [],
+    complianceMetrics: [],
+    recentActivities: [],
+    facultyTrainings: [],
   });
 
-  const chartRef = useRef(null);
-  const [averageScore, setAverageScore] = useState(null);
-  const [weightedAverage, setWeightedAverage] = useState(null);
-  const [componentScores, setComponentScores] = useState(null);
-  const [complianceColor, setComplianceColor] = useState('#808080');
-  const [abetAssessments, setAbetAssessments] = useState([]);
-  const [selectedAssessment, setSelectedAssessment] = useState(null);
-  const [evidenceStats, setEvidenceStats] = useState({ direct: 0, indirect: 0 });
-  const [loading, setLoading] = useState(true);
-  const [assessmentEvents, setAssessmentEvents] = useState([]);
+  const [basicStats, setBasicStats] = useState({
+    programs: 0,
+    courses: 0,
+    assessments: 0,
+    departments: 0,
+    average_score: 0,
+  });
+  // Auth context for user permissions
+  const { currentUser, hasPermission } = useContext(AuthContext);
 
+  // Add this after your state and context declarations
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const [statsRes, abetRes, avgRes, evidenceRes, eventsRes] = await Promise.all([
-          api.get('dashboard-stats/'),
-          assessmentService.getAssessments(),
-          api.get('assessments/average-score/'),
-          api.get('abet-outcomes/'),
-          api.get('assessment-events/')
-        ]);
+    // Only fetch data if user is authenticated
+    if (currentUser) {
+      fetchAllDashboardData();
+    }
+  }, [currentUser, selectedSemester]); // Re-fetch when user or semester changes
 
-        setStats({
-          programs: statsRes.data.programs || 0,
-          departments: statsRes.data.departments || 0,
-          courses: statsRes.data.courses || 0,
-          assessments: statsRes.data.assessments || 0,
-        });
+  const getFacultyTrainingStats = () => {
+    // This should match the same calculation logic as FacultyTraining.js
+    if (
+      dashboardData.facultyTrainings &&
+      dashboardData.facultyTrainings.length > 0
+    ) {
+      const total = dashboardData.facultyTrainings.length;
+      const completed = dashboardData.facultyTrainings.filter(
+        (t) => t.is_completed === true
+      ).length;
+      const completionRate =
+        total > 0 ? Math.round((completed / total) * 100) : 0;
 
-        setAverageScore(avgRes.data?.average_score || 0);
-        setAbetAssessments(abetRes.data);
-        setAssessmentEvents(eventsRes.data);
+      return {
+        total,
+        completed,
+        pending: total - completed,
+        completionRate,
+      };
+    }
+    return null;
+  };
 
-        const directCount = evidenceRes.data.filter(e => e.evidence_type === 'direct').length;
-        const indirectCount = evidenceRes.data.filter(e => e.evidence_type === 'indirect').length;
-        setEvidenceStats({ direct: directCount, indirect: indirectCount });
-
-        if (abetRes.data.length > 0) {
-          const firstId = abetRes.data[0].id;
-          const assessment = await assessmentService.getAssessment(firstId);
-          setSelectedAssessment(assessment.data);
-          await fetchAssessmentComponents(assessment.data.id);
-        }
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-
-    const interval = setInterval(() => {
-      fetchAssessmentEvents();
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const refreshDashboard = async () => {
-    setLoading(true);
+  const fetchAllDashboardData = async () => {
     try {
-      const [eventsRes, avgRes, abetRes, statsRes] = await Promise.all([
-        api.get('assessment-events/'),
-        api.get('assessments/average-score/'),
-        assessmentService.getAssessments(),
-        api.get('dashboard-stats/')
-      ]);
-      
-      setAssessmentEvents(eventsRes.data);
-      setAverageScore(avgRes.data?.average_score || 0);
-      setAbetAssessments(abetRes.data);
-      setStats({
-        programs: statsRes.data.programs || 0,
-        departments: statsRes.data.departments || 0,
-        courses: statsRes.data.courses || 0,
-        assessments: statsRes.data.assessments || 0,
-      });
-      
-      if (selectedAssessment?.id) {
-        const updatedAssessment = await assessmentService.getAssessment(selectedAssessment.id);
-        setSelectedAssessment(updatedAssessment.data);
-        await fetchAssessmentComponents(selectedAssessment.id);
-      } else if (abetRes.data.length > 0) {
-        const firstId = abetRes.data[0].id;
-        const assessment = await assessmentService.getAssessment(firstId);
-        setSelectedAssessment(assessment.data);
-        await fetchAssessmentComponents(assessment.data.id);
+      setLoading(true);
+      setError(null);
+
+      // Create array of API calls based on user permissions
+      const apiCalls = [];
+
+      // Basic data that all authenticated users can see
+      apiCalls.push(
+        { name: "stats", call: dashboardAPI.getDashboardStats() },
+        { name: "abetOutcomes", call: dashboardAPI.getABETOutcomes() },
+        {
+          name: "facultyTraining",
+          call: axios.get("http://localhost:8000/api/faculty-training/", {
+            headers: {
+              Authorization: `Token ${localStorage.getItem("token")}`,
+            },
+          }),
+        }
+      );
+
+      // Rest of your existing apiCalls logic...
+      if (hasPermission("faculty") || hasPermission("admin")) {
+        apiCalls.push(
+          {
+            name: "courseAssessments",
+            call: dashboardAPI.getCourseAssessments(selectedSemester),
+          },
+          { name: "programAverages", call: dashboardAPI.getProgramAverages() }
+        );
       }
-    } catch (error) {
-      console.error('Error refreshing dashboard:', error);
+
+      if (hasPermission("admin")) {
+        apiCalls.push({
+          name: "auditLogs",
+          call: dashboardAPI.getRecentActivities(),
+        });
+      }
+
+      // Execute all API calls and handle individual failures
+      const responses = await Promise.allSettled(
+        apiCalls.map((api) => api.call)
+      );
+
+      responses.forEach((response, index) => {
+        const apiName = apiCalls[index].name;
+        if (response.status === "fulfilled" && apiName === "stats") {
+          console.log("🔍 Stats API Response Structure:", {
+            hasAbetOutcomes: !!response.value.data.abet_outcomes,
+            abetOutcomesLength: response.value.data.abet_outcomes?.length || 0,
+            firstOutcome: response.value.data.abet_outcomes?.[0] || "none",
+            allKeys: Object.keys(response.value.data),
+          });
+        }
+      });
+
+      // Process responses safely
+      const newDashboardData = { ...dashboardData };
+
+      responses.forEach((response, index) => {
+        const apiName = apiCalls[index].name;
+
+        if (response.status === "fulfilled") {
+          console.log(
+            `✅ ${apiName} loaded successfully:`,
+            response.value.data
+          );
+
+          // Map API responses to dashboard data
+          // In your responses.forEach loop, add this case to your switch statement:
+          switch (apiName) {
+            case "stats":
+              const statsData = response.value.data;
+              console.log("📊 Full stats data received:", statsData);
+
+              // Your existing stats handling code...
+              if (
+                statsData.abet_outcomes &&
+                statsData.abet_outcomes.length > 0
+              ) {
+                newDashboardData.abetOutcomes = statsData.abet_outcomes;
+                console.log(
+                  "✅ ABET outcomes assigned from stats:",
+                  statsData.abet_outcomes.length
+                );
+              }
+
+              if (statsData.courses_data && statsData.courses_data.length > 0) {
+                newDashboardData.coursesData = statsData.courses_data;
+                console.log(
+                  "✅ Courses data assigned from stats:",
+                  statsData.courses_data.length
+                );
+              }
+
+              if (statsData.progress_metrics) {
+                setProgressMetrics(statsData.progress_metrics);
+              }
+
+              if (statsData.compliance_metrics) {
+                newDashboardData.complianceMetrics =
+                  statsData.compliance_metrics;
+              }
+              break;
+
+            // ADD THIS NEW CASE:
+            case "facultyTraining":
+              newDashboardData.facultyTrainings = response.value.data;
+              console.log(
+                "✅ Faculty training data assigned:",
+                response.value.data.length
+              );
+              break;
+
+            case "courseAssessments":
+              // Your existing courseAssessments handling...
+              if (
+                !newDashboardData.coursesData ||
+                newDashboardData.coursesData.length === 0
+              ) {
+                newDashboardData.coursesData = response.value.data;
+                console.log("✅ Courses data assigned from fallback endpoint");
+              }
+              break;
+
+            case "auditLogs":
+              newDashboardData.recentActivities = response.value.data;
+              break;
+
+            default:
+              console.log(`Data for ${apiName}:`, response.value.data);
+          }
+        } else {
+          console.warn(`⚠️ ${apiName} failed:`, response.reason.message);
+          // Don't set error state for individual API failures
+          // The dashboard will use fallback static data
+        }
+      });
+
+      setDashboardData(newDashboardData);
+    } catch (err) {
+      console.error("Dashboard data fetch error:", err);
+      setError("Failed to load dashboard data. Please try again.");
     } finally {
       setLoading(false);
     }
   };
-  
-  
 
-
-  const fetchAssessmentEvents = async () => {
-    try {
-      const [eventsRes, avgRes, statsRes] = await Promise.all([
-        api.get('assessment-events/'),
-        api.get('assessments/average-score/'),
-        api.get('dashboard-stats/')
-      ]);
-    
-      setAssessmentEvents(eventsRes.data);
-      setAverageScore(avgRes.data?.average_score || 0);
-      
-      // Update stats as well to keep everything in sync
-      setStats({
-        programs: statsRes.data.programs || 0,
-        departments: statsRes.data.departments || 0,
-        courses: statsRes.data.courses || 0,
-        assessments: statsRes.data.assessments || 0,
-      });
-    } catch (error) {
-      console.error('Error fetching assessment events:', error);
-    }
+  // Add refresh function for your existing refresh button
+  const handleRefresh = () => {
+    fetchAllDashboardData();
   };
 
-  const fetchAssessmentComponents = async (assessmentId) => {
-    if (!assessmentId) return;
-    try {
-      const scoreResponse = await assessmentService.calculateAssessmentScore(assessmentId);
-      const scoreData = scoreResponse.data;
-      setWeightedAverage(scoreData.total_score);
-      setComplianceColor(getComplianceColor(scoreData.total_score));
-      setComponentScores({
-        continuousImprovement: scoreData.continuous_improvement_score,
-        academicPerformance: scoreData.academic_performance_score,
-        learningOutcome: scoreData.learning_outcome_score
-      });
-    } catch (error) {
-      console.error('Error calculating assessment components:', error);
-      setWeightedAverage(null);
-    }
-  };
-
-  const getComplianceColor = (percentage) => {
-    if (percentage >= 90) return '#4CAF50';
-    if (percentage >= 80) return '#FFC107';
-    if (percentage >= 70) return '#FF9800';
-    return '#F44336';
-  };
-
-  const getComplianceStatus = (percentage) => {
-    if (percentage >= 90) return 'ABET Accredited';
-    if (percentage >= 80) return 'Near Accreditation';
-    if (percentage >= 70) return 'Needs Improvement';
-    return 'At Risk';
-  };
-
-  const handleCreateAssessment = async (assessmentData) => {
-    try {
-      const response = await assessmentService.createAssessment(assessmentData);
-      // Refresh dashboard after creation
-      await refreshDashboard();
-      return response;
-    } catch (error) {
-      console.error('Error creating assessment:', error);
-      throw error;
-    }
-  };
-
-  const handleUpdateAssessment = async (id, data) => {
-    try {
-      await assessmentService.updateAssessment(id, data);
-      // Refresh dashboard after update
-      await refreshDashboard();
-      // If the updated assessment is currently selected, refresh its details
-      if (selectedAssessment?.id === id) {
-        const updated = await assessmentService.getAssessment(id);
-        setSelectedAssessment(updated.data);
-        await fetchAssessmentComponents(id);
-      }
-    } catch (error) {
-      console.error('Error updating assessment:', error);
-    }
-  };
-
-  const handleAssessmentChange = async (assessmentId) => {
-    try {
-      const response = await assessmentService.getAssessment(assessmentId);
-      setSelectedAssessment(response.data);
-      await fetchAssessmentComponents(assessmentId);
-      // Also refresh the events to make sure chart is up-to-date
-      await fetchAssessmentEvents();
-    } catch (error) {
-      console.error('Error loading assessment:', error);
-    }
-  };
-  const calculateComponentAverage = (type) => {
-    if (!componentScores) return 'N/A';
-    switch (type) {
-      case 'continuous-improvement': return Math.round(componentScores.continuousImprovement || 0);
-      case 'academic-performance': return Math.round(componentScores.academicPerformance || 0);
-      case 'learning-outcome': return Math.round(componentScores.learningOutcome || 0);
-      default: return 'N/A';
-    }
-  };
-
-  const getSemester = (date) => {
-    const month = date.getMonth();
-    const year = date.getFullYear();
-    if (month >= 7 && month <= 11) return `Fall ${year}`;
-    else if (month >= 0 && month <= 4) return `Spring ${year}`;
-    else return `Summer ${year}`;
-  };
-
-  const groupEventsBySemester = () => {
-    const grouped = {};
-    assessmentEvents.forEach(event => {
-      const date = new Date(event.timestamp);
-      const semester = getSemester(date);
-      if (!grouped[semester]) grouped[semester] = [];
-      grouped[semester].push({ ...event, date });
-    });
-    Object.keys(grouped).forEach(semester => {
-      grouped[semester].sort((a, b) => a.date - b.date);
-    });
-    return grouped;
-  };
-
-  const prepareChartData = () => {
-    const semesters = groupEventsBySemester();
-    const colors = {
-      'Fall': 'rgb(255, 99, 132)',
-      'Spring': 'rgb(54, 162, 235)',
-      'Summer': 'rgb(255, 206, 86)'
-    };
-
-    const datasets = Object.entries(semesters).map(([semester, events]) => {
-      const semesterType = semester.split(' ')[0];
-      const eventsByDate = {};
-      events.forEach(event => {
-        const dateStr = new Date(event.timestamp).toDateString();
-        if (!eventsByDate[dateStr]) eventsByDate[dateStr] = [];
-        eventsByDate[dateStr].push(event);
-      });
-
-      const dataPoints = [];
-      Object.entries(eventsByDate).forEach(([dateStr, dateEvents]) => {
-        dateEvents.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-        dateEvents.forEach((event, index) => {
-          const adjustedDate = new Date(event.timestamp);
-          dataPoints.push({
-            x: adjustedDate,
-            y: parseFloat(event.average_score_at_time).toFixed(2),
-            eventType: event.event_type,
-            assessmentName: event.assessment_name,
-            timestamp: event.timestamp
-          });
-        });
-      });
-
-      dataPoints.sort((a, b) => a.x - b.x);
-
-      const today = new Date().toDateString();
-      
-
-      return {
-        label: semester,
-        data: dataPoints.map(point => ({
-          x: point.x,
-          y: parseFloat(point.y || 0),
-          assessmentName: point.assessmentName,
-          eventType: point.eventType,
-          timestamp: point.timestamp
-        })),
-        borderColor: colors[semesterType] || 'rgb(75, 192, 192)',
-        backgroundColor: `${colors[semesterType]}33`,
-        tension: 0.1,
-        pointBackgroundColor: dataPoints.map(point =>
-          point.eventType === 'CREATE' ? 'green' :
-            point.eventType === 'UPDATE' ? 'blue' : 'red'
-        ),
-        pointRadius: 6,
-        showLine: true,
-      };
-    });
-
-    return { datasets };
-  };
-
-  const allScores = assessmentEvents.map(e => parseFloat(e.score)).filter(s => !isNaN(s));
-  const minScore = Math.min(...allScores, 100);
-  const maxScore = Math.max(...allScores, 0);
-
-  const eventTypeMap = {
-    'CREATE': 'Created',
-    'UPDATE': 'Updated',
-    'DELETE': 'Deleted'
-  };
-
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    elements: {
-      line: {
-        borderWidth: 2,
-        tension: 0.3,  // Optional for curved line; set to 0 for straight
-      },
-      point: {
-        radius: 6
-      }
+  // ABET Student Outcomes (2019-2020 Criteria)
+  const abetOutcomes = [
+    {
+      id: "SO1",
+      label: "Engineering Knowledge",
+      score: 3.2,
+      target: 3.0,
+      status: "met",
     },
-    scales: {
-      x: {
-        type: 'time',
-        time: {
-          unit: 'hour',
-          displayFormats: {
-            hour: 'MMM d, h:mm a'
-          }
-        },
-        title: { display: true, text: 'Date' },
-        ticks: {
-          maxRotation: 45,
-          autoSkip: true,
-          maxTicksLimit: 10
-        }
-      },
-      y: {
-        beginAtZero: false,
-        suggestedMin: Math.max(0, minScore - 10),
-        suggestedMax: maxScore + 10,
-        title: { display: true, text: 'ABET Score' }
-      }
+    {
+      id: "SO2",
+      label: "Problem Analysis",
+      score: 2.8,
+      target: 3.0,
+      status: "below",
     },
-    plugins: {
-      tooltip: {
-        callbacks: {
-          label: (context) => {
-            const point = context.raw;
-            const date = new Date(point.timestamp);
-            return [
-              `Assessment: ${point.assessmentName || 'N/A'}`,
-              `Event: ${eventTypeMap[point.eventType] || point.eventType || 'N/A'}`,
-              `Overall ABET Score: ${parseFloat(point.y).toFixed(2)}%`,
-              `Date: ${date.toLocaleDateString()}`,
-              `Time: ${date.toLocaleTimeString()}`
-            ];
-          }
-        }
-      },
-      legend: { position: 'top' },
-      title: { display: true, text: 'Assessment Timeline by Semester' }
+    {
+      id: "SO3",
+      label: "Design/Development",
+      score: 3.4,
+      target: 3.0,
+      status: "met",
+    },
+    {
+      id: "SO4",
+      label: "Investigation",
+      score: 3.1,
+      target: 3.0,
+      status: "met",
+    },
+    {
+      id: "SO5",
+      label: "Modern Tool Usage",
+      score: 3.6,
+      target: 3.0,
+      status: "exceeded",
+    },
+    {
+      id: "SO6",
+      label: "Professional Responsibility",
+      score: 2.9,
+      target: 3.0,
+      status: "below",
+    },
+    {
+      id: "SO7",
+      label: "Communication",
+      score: 3.3,
+      target: 3.0,
+      status: "met",
+    },
+  ];
+
+  const coursesData = [
+    {
+      code: "CS 101",
+      name: "Introduction to Programming",
+      instructor: "Dr. Smith",
+      enrollment: 45,
+      outcomes: ["SO1", "SO5"],
+      assessmentScore: 3.2,
+      status: "compliant",
+    },
+    {
+      code: "CS 201",
+      name: "Data Structures",
+      instructor: "Dr. Johnson",
+      enrollment: 38,
+      outcomes: ["SO1", "SO2", "SO5"],
+      assessmentScore: 2.8,
+      status: "needs-review",
+    },
+    {
+      code: "CS 301",
+      name: "Software Engineering",
+      instructor: "Dr. Wilson",
+      enrollment: 32,
+      outcomes: ["SO3", "SO6", "SO7"],
+      assessmentScore: 3.4,
+      status: "compliant",
+    },
+    {
+      code: "CS 401",
+      name: "Senior Capstone",
+      instructor: "Dr. Brown",
+      enrollment: 28,
+      outcomes: ["SO2", "SO3", "SO4", "SO7"],
+      assessmentScore: 3.1,
+      status: "compliant",
+    },
+  ];
+
+  const assessmentData = [
+    {
+      type: "Direct Assessment",
+      method: "Exam Questions",
+      courses: 12,
+      completion: 85,
+      avgScore: 3.2,
+    },
+    {
+      type: "Direct Assessment",
+      method: "Project Rubrics",
+      courses: 8,
+      completion: 92,
+      avgScore: 3.4,
+    },
+    {
+      type: "Indirect Assessment",
+      method: "Student Surveys",
+      courses: 15,
+      completion: 78,
+      avgScore: 3.1,
+    },
+    {
+      type: "Indirect Assessment",
+      method: "Alumni Feedback",
+      courses: 5,
+      completion: 65,
+      avgScore: 3.3,
+    },
+  ];
+
+  const complianceMetrics = [
+    {
+      metric: "Course Syllabi Updated",
+      value: "94%",
+      target: "100%",
+      status: "warning",
+    },
+    {
+      metric: "Assessment Data Collected",
+      value: "87%",
+      target: "90%",
+      status: "warning",
+    },
+    {
+      metric: "Student Outcomes Met",
+      value: "71%",
+      target: "80%",
+      status: "critical",
+    },
+    {
+      metric: "Faculty Training Complete",
+      value: "96%",
+      target: "95%",
+      status: "good",
+    },
+  ];
+
+  // In your SimpleProgressChart component, add safety checks
+  const SimpleProgressChart = ({ data, title }) => {
+    // Add safety check for data
+    if (!data || !Array.isArray(data)) {
+      return (
+        <div className="chart-container">
+          <h3>{title}</h3>
+          <p>No data available</p>
+        </div>
+      );
     }
+
+    return (
+      <div className="chart-container">
+        <h3>{title}</h3>
+        <div className="progress-chart">
+          {data.map((item, index) => {
+            // Add safety checks for each property
+            const score = typeof item.score === "number" ? item.score : 0;
+            const target = typeof item.target === "number" ? item.target : 3.0;
+            const percentage = target > 0 ? (score / target) * 100 : 0;
+
+            return (
+              <div key={index} className="progress-item">
+                <div className="progress-label">
+                  <span>{item.id || item.label || `Item ${index + 1}`}</span>
+                  <span className="progress-value">
+                    {score.toFixed(1)} / {target.toFixed(1)}
+                  </span>
+                </div>
+                <div className="progress-bar">
+                  <div
+                    className={`progress-fill ${item.status || "unknown"}`}
+                    style={{ width: `${Math.min(percentage, 100)}%` }}
+                  ></div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
   };
 
   if (loading) {
     return (
-      <div className="dashboard loading">
-        <div className="loader"></div>
-        <p>Loading dashboard data...</p>
+      <div className="dashboard-container">
+        <div className="dashboard-header">
+          <h1>ABET Assessment Dashboard</h1>
+        </div>
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Loading dashboard data...</p>
+        </div>
       </div>
     );
   }
 
-  const dashboardAPI = {
-    refresh: refreshDashboard,
-    createAssessment: handleCreateAssessment,
-    updateAssessment: handleUpdateAssessment
+  const prepareChartData = (data) => {
+    if (!data || !Array.isArray(data)) {
+      console.log("⚠️ prepareChartData received invalid data:", data);
+      return [];
+    }
+
+    return data.map((item, index) => {
+      const prepared = {
+        id: item.id || item.code || item.label || `outcome-${index}`,
+        label: item.label || item.description || `Outcome ${index + 1}`,
+        score:
+          typeof item.score === "number"
+            ? item.score
+            : typeof item.current_score === "number"
+            ? item.current_score / 25
+            : 0, // Convert percentage back to 4-point scale
+        target: item.target || item.target_score || 3.0,
+        status: item.status || "unknown",
+      };
+
+      console.log(`📊 Prepared chart data for ${prepared.id}:`, prepared);
+      return prepared;
+    });
   };
 
-  const DashboardWithAPI = Dashboard;
-  DashboardWithAPI.refreshDashboard = dashboardAPI.refresh;
-  DashboardWithAPI.createAssessment = dashboardAPI.createAssessment;
-  DashboardWithAPI.updateAssessment = dashboardAPI.updateAssessment;
+  // Show error state if data fetch failed
+  if (error) {
+    return (
+      <div className="dashboard-container">
+        <div className="dashboard-header">
+          <h1>ABET Assessment Dashboard</h1>
+        </div>
+        <div className="error-container">
+          <div className="error-message">
+            <h3>⚠️ {error}</h3>
+            <button onClick={handleRefresh} className="refresh-btn">
+              🔄 Refresh Data
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="dashboard">
-      <div className="dashboard-header">
+    <div className="abet-dashboard">
+      {/* Header */}
+      <header className="dashboard-header">
         <div className="header-content">
-          <MdDashboard className="header-icon" />
-          <h1>ABET Accreditation Dashboard</h1>
+          <div className="header-left">
+            <h1>ABET Accreditation Assessment Dashboard</h1>
+            <p>Assessment Cycle 2024-2025</p>
+          </div>
+          <div className="header-controls">
+            <select
+              value={selectedSemester}
+              onChange={(e) => setSelectedSemester(e.target.value)}
+              className="semester-select"
+            >
+              <option value="Fall 2024">Fall 2024</option>
+              <option value="Spring 2024">Spring 2024</option>
+              <option value="Summer 2024">Summer 2024</option>
+            </select>
+            <button className="export-btn">
+              <i className="fas fa-download"></i>
+              Export Report
+            </button>
+          </div>
         </div>
-        <p className="header-subtitle">Overview of your accreditation progress and key metrics</p>
-        <Link to="/audit-logs" className="btn secondary">
-            View Audit Logs
-        </Link>
-      </div>
 
-      <div className="content-wrapper">
-        <div className="dashboard-content">
-          <div className="compliance-card">
-            <div className="card-header">
-              <FaChartLine />
-              <h2>Overall Accreditation Progress</h2>
-            </div>
-            <div className="compliance-body">
-              <div className="progress-circle-container">
-                <svg viewBox="0 0 36 36" className="circular-chart">
-                  <path className="circle-bg" d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831" />
-                  {averageScore !== null && (
-                    <path
-                      className="circle"
-                      strokeDasharray={`${averageScore},100`}
-                      style={{ stroke: getComplianceColor(averageScore) }}
-                      d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831"
-                    />
-                  )}
-                  <text x="18" y="18" className="percentage">
-                    {averageScore !== null ? `${Math.round(averageScore)}%` : 'N/A'}
-                  </text>
-                </svg>
-              </div>
-              <div className="compliance-details">
-                <p className="status-indicator">
-                  <span className="status-dot" style={{ backgroundColor: getComplianceColor(averageScore) }}></span>
-                  {getComplianceStatus(averageScore)}
-                </p>
-                <p style={{ fontSize: '0.9rem', color: '#64748b' }}>
-                  This reflects the average score across all ABET assessments.
-                </p>
-              </div>
-            </div>
-          </div>
+        {/* Tab Navigation */}
+        <nav className="tab-navigation">
+          <button
+            className={`tab ${activeTab === "overview" ? "active" : ""}`}
+            onClick={() => setActiveTab("overview")}
+          >
+            Overview
+          </button>
+          <button
+            className={`tab ${activeTab === "outcomes" ? "active" : ""}`}
+            onClick={() => setActiveTab("outcomes")}
+          >
+            Student Outcomes
+          </button>
+          <button
+            className={`tab ${activeTab === "courses" ? "active" : ""}`}
+            onClick={() => setActiveTab("courses")}
+          >
+            Course Assessment
+          </button>
+          <button
+            className={`tab ${activeTab === "compliance" ? "active" : ""}`}
+            onClick={() => setActiveTab("compliance")}
+          >
+            Compliance
+          </button>
+        </nav>
+      </header>
 
-          <div className="stats-row">
-            {[
-              { label: 'Programs', value: stats.programs, icon: FaUniversity, color: '#4361ee' },
-              { label: 'Departments', value: stats.departments, icon: FaBuilding, color: '#3a0ca3' },
-              { label: 'Courses', value: stats.courses, icon: FaBook, color: '#7209b7' },
-              { label: 'Assessments', value: stats.assessments, icon: FaClipboardList, color: '#f72585' },
-            ].map(({ label, value, icon: Icon, color }) => (
-              <div key={label} className="stat-card">
-                <div className="stat-icon" style={{ backgroundColor: `${color}15` }}>
-                  <Icon size={24} color={color} />
-                </div>
-                <div className="stat-details">
-                  <h3>{value}</h3>
-                  <p>{label}</p>
-                </div>
-                <Link to={`/${label.toLowerCase()}`} className="stat-link">View</Link>
-              </div>
-            ))}
-          </div>
+      {/* Main Content */}
+      <main className="dashboard-main">
+        {activeTab === "overview" && (
+          <div className="overview-content">
+            {/* Key Metrics */}
+            {/* Key Metrics */}
+            <div className="metrics-grid">
+              {(progressMetrics.length > 0
+                ? progressMetrics
+                : complianceMetrics
+              ).map((metric, index) => {
+                // Get real-time faculty training stats
+                const realTimeStats = getFacultyTrainingStats();
 
-          {/* Timeline Chart Card */}
-          <div className="timeline-card">
-            <div className="card-header">
-              <FaHistory />
-              <h2>Assessment Timeline</h2>
-            </div>
-            <div className="timeline-body">
-              {assessmentEvents.length > 0 ? (
-                <div className="chart-container">
-                  <Scatter 
-                    key={`chart-${JSON.stringify(assessmentEvents.map(e => `${e.id}-${e.timestamp}-${e.score}`))}`} 
-                    data={prepareChartData()} 
-                    options={chartOptions} 
-                    ref={chartRef}
-                  />
-                </div>
-              ) : (
-                <div className="no-data">No assessment events found</div>
-              )}
-            </div>
-          </div>
+                // Determine display values
+                let displayValue = metric.percentage || parseInt(metric.value);
+                let displayStatus = metric.status;
+                let displayDetails = null;
 
-          <div className="dashboard-lower">
-            <div className="compliance-card">
-              <div className="card-header">
-                <FaChartLine />
-                <h2>ABET Assessment Score</h2>
-              </div>
-              <div className="compliance-body">
-                <div className="progress-circle-container">
-                  <svg viewBox="0 0 36 36" className="circular-chart">
-                    <path className="circle-bg" d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831" />
-                    {weightedAverage !== null && (
-                      <path
-                        className="circle"
-                        strokeDasharray={`${weightedAverage},100`}
-                        style={{ stroke: complianceColor }}
-                        d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831"
-                      />
-                    )}
-                    <text x="18" y="18" className="percentage">
-                      {weightedAverage !== null ? `${Math.round(weightedAverage)}%` : 'N/A'}
-                    </text>
-                  </svg>
-                </div>
+                // Override for Faculty Training metrics
+                if (
+                  metric.name === "Faculty Training" ||
+                  metric.metric === "Faculty Training Complete" ||
+                  metric.title === "Faculty Training Complete"
+                ) {
+                  if (realTimeStats) {
+                    displayValue = realTimeStats.completionRate;
+                    displayStatus =
+                      realTimeStats.completionRate >= 95
+                        ? "good"
+                        : realTimeStats.completionRate >= 80
+                        ? "warning"
+                        : "critical";
+                    displayDetails = `${realTimeStats.completed} of ${realTimeStats.total} completed`;
+                  }
+                }
 
-                <div className="compliance-details">
-                  <div className="status-indicator">
-                    <div className="status-dot" style={{ backgroundColor: complianceColor }}></div>
-                    <span style={{ color: complianceColor }}>{getComplianceStatus(weightedAverage)}</span>
-                  </div>
-
-                  <div className="assessment-selector">
-                    <label>Active Assessment:</label>
-                    <select
-                      onChange={(e) => handleAssessmentChange(e.target.value)}
-                      value={selectedAssessment?.id || ''}
-                      disabled={abetAssessments.length === 0}
-                    >
-                      {abetAssessments.map((assessment) => (
-                        <option key={assessment.id} value={assessment.id}>
-                          {assessment.name} ({new Date(assessment.date).toLocaleDateString()})
-                        </option>
-                      ))}
-                      {abetAssessments.length === 0 && (
-                        <option value="">No assessments available</option>
-                      )}
-                    </select>
-                  </div>
-
-                  <div className="assessment-breakdown">
-                    <p><strong>Assessment Breakdown:</strong></p>
-                    <p>Continuous Improvement: {calculateComponentAverage('continuous-improvement')}%</p>
-                    <p>Academic Performance: {calculateComponentAverage('academic-performance')}%</p>
-                    <p>Learning Outcomes: {calculateComponentAverage('learning-outcome')}%</p>
-                  </div>
-                </div>
-              </div>
-              <div className="compliance-footer">
-                <Link to="/assessments" className="btn primary">
-                  <MdAssessment /> View All Assessments
-                </Link>
-                <Link to="/reports/new" className="btn secondary">
-                  <MdOutlineReport /> Generate Report
-                </Link>
-              </div>
-            </div>
-
-            <div className="quick-actions-card">
-              <div className="card-header">
-                <FaCheckCircle />
-                <h2>Quick Actions</h2>
-              </div>
-              <div className="actions-grid">
-                {[
-                  { label: 'Add New Program', link: '/programs/new', icon: FaUniversity, color: '#4361ee' },
-                  { label: 'Add Department', link: '/departments/new', icon: FaBuilding, color: '#3a0ca3' },
-                  { label: 'Add Course', link: '/courses/new', icon: FaBook, color: '#7209b7' },
-                  { label: 'Create Assessment', link: '/assessments/new', icon: MdAssessment, color: '#f72585' },
-                  { label: 'View Reports', link: '/reports', icon: MdOutlineReport, color: '#4CAF50' },
-                  { label: 'Generate Reports', link: '/reports/new', icon: MdOutlineReport, color: '#2196F3' },
-                ].map(({ label, link, icon: Icon, color }) => (
-                  <Link key={label} to={link} className="action-tile">
-                    <div className="action-icon" style={{ backgroundColor: `${color}15`, color: color }}>
-                      <Icon size={24} />
+                return (
+                  <div key={index} className="metric-card">
+                    <div className="metric-header">
+                      <h3>{metric.title || metric.name || metric.metric}</h3>
+                      <span
+                        className={`status-indicator ${displayStatus}`}
+                      ></span>
                     </div>
-                    <span>{label}</span>
-                  </Link>
+                    <div className="metric-value">
+                      <span className="percentage">{displayValue}%</span>
+                      <span className="target">
+                        {metric.target || "Target: 95%"}
+                      </span>
+                    </div>
+                    <div className="progress-bar">
+                      <div
+                        className={`progress-fill ${displayStatus}`}
+                        style={{ width: `${displayValue}%` }}
+                      ></div>
+                    </div>
+                    {/* Show real-time details for Faculty Training */}
+                    {displayDetails && (
+                      <div className="metric-details">{displayDetails}</div>
+                    )}
+                    {/* Fallback for other metrics */}
+                    {!displayDetails && metric.current !== undefined && (
+                      <div className="metric-details">
+                        {metric.current} of {metric.total} completed
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Assessment Overview */}
+            <div className="assessment-overview">
+              <div className="chart-container">
+                <SimpleProgressChart
+                  data={prepareChartData(
+                    dashboardData.abetOutcomes.length > 0
+                      ? dashboardData.abetOutcomes
+                      : abetOutcomes
+                  ).slice(0, 4)}
+                  title="Student Outcomes Performance (SO1-SO4)"
+                />
+              </div>
+              <div className="chart-container">
+                <SimpleProgressChart
+                  data={prepareChartData(
+                    dashboardData.abetOutcomes.length > 0
+                      ? dashboardData.abetOutcomes
+                      : abetOutcomes
+                  ).slice(4)}
+                  title="Student Outcomes Performance (SO5-SO7)"
+                />
+              </div>
+            </div>
+            {/* Recent Assessment Activities */}
+            <div className="recent-activities">
+              <h3>Recent Assessment Activities</h3>
+              <div className="activity-timeline">
+                <div className="activity-item">
+                  <div className="activity-marker completed"></div>
+                  <div className="activity-content">
+                    <h4>CS 301 Project Rubrics Submitted</h4>
+                    <p>
+                      Dr. Wilson completed assessment for Software Engineering
+                      capstone projects
+                    </p>
+                    <span className="activity-time">2 hours ago</span>
+                  </div>
+                </div>
+                <div className="activity-item">
+                  <div className="activity-marker pending"></div>
+                  <div className="activity-content">
+                    <h4>Student Survey Responses Due</h4>
+                    <p>
+                      End-of-semester surveys for outcome assessment pending
+                    </p>
+                    <span className="activity-time">Due in 3 days</span>
+                  </div>
+                </div>
+                <div className="activity-item">
+                  <div className="activity-marker completed"></div>
+                  <div className="activity-content">
+                    <h4>Faculty Training Session Completed</h4>
+                    <p>
+                      Assessment methodology workshop for new faculty members
+                    </p>
+                    <span className="activity-time">1 week ago</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "outcomes" && (
+          <div className="outcomes-content">
+            <div className="outcomes-grid">
+              {(dashboardData.abetOutcomes.length > 0
+                ? dashboardData.abetOutcomes
+                : abetOutcomes
+              ).map((outcome, index) => {
+                // Calculate score and percentage correctly
+                let score, percentage;
+
+                if (outcome.score !== undefined && outcome.score > 0) {
+                  score = outcome.score;
+                  percentage = (score / 4.0) * 100;
+                } else if (
+                  outcome.current_score !== undefined &&
+                  outcome.current_score > 0
+                ) {
+                  percentage = outcome.current_score;
+                  score = (percentage / 100) * 4.0;
+                } else {
+                  score = 0;
+                  percentage = 0;
+                }
+
+                const target = outcome.target || outcome.target_score || 3.0;
+                const targetPercentage = (target / 4.0) * 100;
+
+                return (
+                  <div key={index} className="outcome-card">
+                    <div className="outcome-header">
+                      <h3>
+                        {outcome.id || outcome.label || `Outcome ${index + 1}`}
+                      </h3>
+                      <span
+                        className={`outcome-status ${
+                          outcome.status || "unknown"
+                        }`}
+                      >
+                        {outcome.status === "met"
+                          ? "Target Met"
+                          : outcome.status === "exceeded"
+                          ? "Exceeded"
+                          : "Below Target"}
+                      </span>
+                    </div>
+                    <h4>
+                      {outcome.label || outcome.description || "No description"}
+                    </h4>
+                    <div className="outcome-score">
+                      <span className="score">
+                        {(typeof score === "number" ? score : 0).toFixed(1)}
+                      </span>
+                      <span className="target">
+                        /{" "}
+                        {(typeof target === "number" ? target : 3.0).toFixed(1)}
+                      </span>
+                    </div>
+                    {/* FIXED: Change from outcome-progress to progress-bar */}
+                    <div className="progress-bar">
+                      <div
+                        className={`progress-fill ${
+                          outcome.status || "unknown"
+                        }`}
+                        style={{
+                          width: `${Math.min(percentage, 100)}%`,
+                        }}
+                      ></div>
+                    </div>
+                    {/* Optional: Add percentage display */}
+                    <div className="outcome-percentage">
+                      {percentage.toFixed(1)}% of target
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "courses" && (
+          <div className="courses-content">
+            <div className="courses-table-container">
+              <table className="courses-table">
+                <thead>
+                  <tr>
+                    <th>Course Code</th>
+                    <th>Course Name</th>
+                    <th>Instructor</th>
+                    <th>Enrollment</th>
+                    <th>Mapped Outcomes</th>
+                    <th>Assessment Score</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(dashboardData.coursesData.length > 0
+                    ? dashboardData.coursesData
+                    : coursesData
+                  ).map((course, index) => (
+                    <tr key={index}>
+                      <td className="course-code">
+                        {course.code || course.name}
+                      </td>
+                      <td>{course.name || course.course_name}</td>
+                      <td>
+                        {course.instructor || course.instructor_name || "TBD"}
+                      </td>
+                      <td>{course.enrollment || 0}</td>
+                      <td className="mapped-outcomes">
+                        {course.mapped_outcomes &&
+                        Array.isArray(course.mapped_outcomes) &&
+                        course.mapped_outcomes.length > 0 ? (
+                          <div className="outcomes-container">
+                            {course.mapped_outcomes.map((outcome, idx) => (
+                              <span
+                                key={idx}
+                                className={`outcome-badge ${
+                                  typeof outcome === "object"
+                                    ? outcome.status
+                                    : "met"
+                                }`}
+                                title={
+                                  typeof outcome === "object"
+                                    ? `Score: ${outcome.score}/4 (${outcome.evidence_type})`
+                                    : `Outcome: ${outcome}`
+                                }
+                              >
+                                {typeof outcome === "object"
+                                  ? outcome.label
+                                  : outcome}
+                              </span>
+                            ))}
+                            {course.outcome_coverage && (
+                              <div className="outcome-coverage">
+                                Coverage: {course.outcome_coverage}%
+                              </div>
+                            )}
+                          </div>
+                        ) : // Fallback for simple array format
+                        course.outcomes && course.outcomes.length > 0 ? (
+                          <div className="outcomes-tags">
+                            {course.outcomes.map((outcome, i) => (
+                              <span key={i} className="outcome-tag">
+                                {outcome}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="no-outcomes">
+                            No outcomes mapped
+                          </span>
+                        )}
+                      </td>
+
+                      <td className="assessment-score">
+                        {(
+                          course.assessmentScore ||
+                          course.assessment_score ||
+                          0
+                        ).toFixed(1)}
+                      </td>
+                      <td>
+                        <span className={`course-status ${course.status}`}>
+                          {course.status === "compliant" ||
+                          course.status === "good"
+                            ? "Compliant"
+                            : "Needs Review"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "compliance" && (
+          <div className="compliance-content">
+            <div className="assessment-methods">
+              <h3>Assessment Methods Summary</h3>
+              <div className="methods-grid">
+                {assessmentData.map((method, index) => (
+                  <div key={index} className="method-card">
+                    <h4>{method.method}</h4>
+                    <p className="method-type">{method.type}</p>
+                    <div className="method-stats">
+                      <div className="stat">
+                        <span className="stat-label">Courses</span>
+                        <span className="stat-value">{method.courses}</span>
+                      </div>
+                      <div className="stat">
+                        <span className="stat-label">Completion</span>
+                        <span className="stat-value">{method.completion}%</span>
+                      </div>
+                      <div className="stat">
+                        <span className="stat-label">Avg Score</span>
+                        <span className="stat-value">
+                          {method.avgScore.toFixed(1)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
           </div>
-        </div>
-      </div>
+        )}
+      </main>
     </div>
   );
 };
 
-
-Dashboard.refreshDashboard = () => Dashboard().refreshDashboard();
-Dashboard.createAssessment = (data) => Dashboard().createAssessment(data);
-Dashboard.updateAssessment = (id, data) => Dashboard().updateAssessment(id, data);
 export default Dashboard;

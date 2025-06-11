@@ -54,6 +54,7 @@ class Course(models.Model):
     description = models.TextField()
     credits = models.IntegerField()
     program = models.ForeignKey(Program, on_delete=models.CASCADE, related_name='courses')
+    instructor = models.ForeignKey(Faculty, on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

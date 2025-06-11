@@ -1,77 +1,189 @@
 // src/components/layout/Layout.js
-import React, { useContext } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { AuthContext } from '../../context/AuthContext';
-import './Layout.css';
-import logo from '../../assets/white-logo.png';
-import { FaTachometerAlt, FaBook, FaBuilding, FaUniversity, FaClipboardList, FaUsers,FaArchive } from 'react-icons/fa';
-import { MdAssessment, MdOutlineReport } from 'react-icons/md';
-import axios from 'axios';
+import React, { useContext, useState } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { AuthContext } from "../../context/AuthContext";
+import "./Layout.css";
+import logo from "../../assets/AISABET.png";
+import {
+  FaTachometerAlt,
+  FaBook,
+  FaBuilding,
+  FaUniversity,
+  FaClipboardList,
+  FaUsers,
+  FaArchive,
+  FaBars,
+  FaBell,
+  FaSearch,
+  FaCog,
+  FaGraduationCap,
+} from "react-icons/fa";
+import { MdAssessment, MdOutlineReport } from "react-icons/md";
+import axios from "axios";
 
 const Layout = ({ children }) => {
   const { currentUser, logout } = useContext(AuthContext);
   const navigate = useNavigate();
+  const location = useLocation();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const handlelogout = async () => {
     try {
       await axios.post(
-        'http://localhost:8000/api/logout/',
+        "http://localhost:8000/api/logout/",
         {},
         {
           headers: {
-            Authorization: `Token ${localStorage.getItem('token')}`,
+            Authorization: `Token ${localStorage.getItem("token")}`,
           },
         }
       );
-  
-      // ✅ Clear token on logout
-      localStorage.removeItem('token');
-      window.location.href = '/login'; // or route change
+
+      localStorage.removeItem("token");
+      window.location.href = "/login";
     } catch (err) {
-      console.error('Logout failed:', err);
+      console.error("Logout failed:", err);
     }
   };
 
+  const toggleSidebar = () => {
+    setSidebarCollapsed(!sidebarCollapsed);
+  };
+
+  const navItems = [
+    { path: "/Dashboard", icon: FaTachometerAlt, label: "Dashboard" },
+    { path: "/programs", icon: FaUniversity, label: "Programs" },
+    { path: "/assessments", icon: MdAssessment, label: "Assessments" },
+    { path: "/departments", icon: FaBuilding, label: "Departments" },
+    {
+      path: "/faculty-training",
+      icon: FaGraduationCap,
+      label: "Faculty Training",
+    },
+    { path: "/reports", icon: MdOutlineReport, label: "Reports" },
+    { path: "/archive", icon: FaArchive, label: "Archive" },
+    ...(currentUser?.userType === "admin"
+      ? [{ path: "/users", icon: FaUsers, label: "Users" }]
+      : []),
+  ];
+
   return (
     <div className="layout-container">
-      <aside className="sidebar">
-        <div className="sidebar-logo">
-          <img src={logo} alt="Logo" />
-          <h2>ABET</h2>
-        </div>
-        <nav className="sidebar-nav">
-          <ul>
-            <li><Link to="/"><FaTachometerAlt /> Dashboard</Link></li>
-            <li><Link to="/programs"><FaUniversity /> Programs</Link></li>
-            <li><Link to="/assessments"><MdAssessment /> Assessments</Link></li>
-            <li><Link to="/departments"><FaBuilding /> Departments</Link></li>
-            <li><Link to="/reports"><MdOutlineReport /> Reports</Link></li>
-            <li><Link to="/archive"><FaArchive /> Archive</Link></li>
-            {currentUser?.userType === 'admin' && (
-              <li><Link to="/users"><FaUsers /> Users</Link></li>
-            )}
-          </ul>
-        </nav>
-      </aside>
-      <div className="main-section">
-        <header className="topbar">
-          <div className="user-info">
-            {currentUser && (
-              <>
-                <span>{currentUser.firstName} {currentUser.lastName}</span>
-                {currentUser.userType && (
-                  <span className="role">({currentUser.userType})</span>
-                )}
-                <button onClick={handlelogout}>Logout</button>
-              </>
+      <aside className={`sidebar ${sidebarCollapsed ? "collapsed" : ""}`}>
+        <div className="sidebar-header">
+          <div className="sidebar-logo">
+            <img src={logo} alt="Logo" />
+            {!sidebarCollapsed && (
+              <div className="logo-text">
+                <h2>ABET</h2>
+                <span>Assessment System</span>
+              </div>
             )}
           </div>
-        </header>
-        <main className="main-content">
-            <div className="content-wrapper">
-              {children}
+        </div>
+
+        <nav className="sidebar-nav">
+          <ul>
+            {navItems.map((item, index) => {
+              const IconComponent = item.icon;
+              const isActive = location.pathname === item.path;
+
+              return (
+                <li
+                  key={index}
+                  className={`nav-item ${isActive ? "active" : ""}`}
+                >
+                  <Link to={item.path} className="nav-link">
+                    <div className="nav-icon">
+                      <IconComponent />
+                    </div>
+                    {!sidebarCollapsed && (
+                      <span className="nav-label">{item.label}</span>
+                    )}
+                    {isActive && <div className="active-indicator"></div>}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+
+        <div className="sidebar-footer">
+          {!sidebarCollapsed && (
+            <div className="user-profile-sidebar">
+              <div className="user-avatar">
+                {currentUser?.firstName?.[0]}
+                {currentUser?.lastName?.[0]}
+              </div>
+              <div className="user-details">
+                <span className="user-name">
+                  {currentUser?.firstName} {currentUser?.lastName}
+                </span>
+                <span className="user-role">{currentUser?.userType}</span>
+              </div>
             </div>
+          )}
+        </div>
+      </aside>
+
+      <div className="main-section">
+        <header className="topbar">
+          <div className="topbar-left">
+            <button className="menu-toggle" onClick={toggleSidebar}>
+              <FaBars />
+            </button>
+            <div className="breadcrumb">
+              <span>ABET Assessment</span>
+            </div>
+          </div>
+
+          <div className="topbar-center">
+            <div className="search-container">
+              <FaSearch className="search-icon" />
+              <input
+                type="text"
+                placeholder="Search..."
+                className="search-input"
+              />
+            </div>
+          </div>
+
+          <div className="topbar-right">
+            <div className="notifications">
+              <FaBell />
+              <span className="notification-badge">3</span>
+            </div>
+
+            <div className="user-menu">
+              <div className="user-info">
+                {currentUser && (
+                  <>
+                    <div className="user-avatar-header">
+                      {currentUser.firstName?.[0]}
+                      {currentUser.lastName?.[0]}
+                    </div>
+                    <div className="user-details-header">
+                      <span className="user-name">
+                        {currentUser.firstName} {currentUser.lastName}
+                      </span>
+                      <span className="user-role">
+                        ({currentUser.userType})
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
+              <button className="logout-btn" onClick={handlelogout}>
+                Logout
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <main className="main-content">
+          <div className="content-wrapper">{children}</div>
         </main>
+
         <footer className="app-footer">
           <p>ABET Assessment System © {new Date().getFullYear()}</p>
         </footer>
