@@ -86,10 +86,31 @@ class AssessmentLearningOutcomeABETSerializer(serializers.ModelSerializer):
 
 class AuditLogSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
-
+    target_name = serializers.SerializerMethodField()
+    
     class Meta:
         model = AuditLog
-        fields = ['id', 'username', 'action', 'target_model', 'target_id', 'changes', 'timestamp']
+        fields = ['id', 'username', 'action', 'target_model', 'target_id', 'target_name', 'changes', 'timestamp']
+    
+    def get_target_name(self, obj):
+        """Get the name of the target object based on model and ID"""
+        try:
+            if obj.target_model == 'Assessment':
+                from .models import Assessment
+                assessment = Assessment.objects.get(id=obj.target_id)
+                return assessment.name
+            elif obj.target_model == 'ContinuousImprovement':
+                return f"Continuous Improvement #{obj.target_id}"
+            elif obj.target_model == 'AcademicPerformance':
+                return f"Academic Performance #{obj.target_id}"
+            elif obj.target_model == 'AssessmentLearningOutcome':
+                return f"Learning Outcome #{obj.target_id}"
+            else:
+                return f"{obj.target_model} #{obj.target_id}"
+        except Exception:
+            # Fallback if object doesn't exist or any error occurs
+            return f"{obj.target_model} #{obj.target_id}"
+
 
 from .models import ABETOutcome
 

@@ -1,15 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import api from '../../services/api';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import api from "../../services/api";
+import "./ProgramForm.css";
 
 const ProgramForm = () => {
   const navigate = useNavigate();
   const [departments, setDepartments] = useState([]);
   const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    department: '',
-    level: 'B'
+    name: "",
+    description: "",
+    department: "",
+    level: "B",
   });
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -18,13 +19,13 @@ const ProgramForm = () => {
     // Fetch departments when component mounts
     const fetchDepartments = async () => {
       try {
-        const response = await api.get('/departments/');
+        const response = await api.get("/departments/");
         setDepartments(response.data);
       } catch (err) {
-        console.error('Failed to fetch departments', err);
+        console.error("Failed to fetch departments", err);
       }
     };
-    
+
     fetchDepartments();
   }, []);
 
@@ -32,7 +33,7 @@ const ProgramForm = () => {
     const { name, value } = e.target;
     setFormData({
       ...formData,
-      [name]: value
+      [name]: value,
     });
   };
 
@@ -40,27 +41,29 @@ const ProgramForm = () => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-  
+
     try {
-      console.log('Submitting form data:', formData);
-      const response = await api.post('/programs/', formData);
-      console.log('Response:', response.data);
+      console.log("Submitting form data:", formData);
+      const response = await api.post("/programs/", formData);
+      console.log("Response:", response.data);
     } catch (err) {
-      console.error('Error details:', err.response?.data);
-      setError(err.response?.data?.detail || 'Failed to create program. Please check your input and try again.');
+      console.error("Error details:", err.response?.data);
+      setError(
+        err.response?.data?.detail ||
+          "Failed to create program. Please check your input and try again."
+      );
     } finally {
       setLoading(false);
-      navigate('/programs/');
+      navigate("/programs/");
     }
   };
-  
 
   return (
     <div className="program-form">
       <h2>Add New Program</h2>
-      
+
       {error && <div className="error-message">{error}</div>}
-      
+
       <form onSubmit={handleSubmit}>
         <div className="form-group">
           <label htmlFor="name">Program Name</label>
@@ -73,7 +76,7 @@ const ProgramForm = () => {
             required
           />
         </div>
-        
+
         <div className="form-group">
           <label htmlFor="description">Description</label>
           <textarea
@@ -84,7 +87,7 @@ const ProgramForm = () => {
             required
           />
         </div>
-        
+
         <div className="form-group">
           <label htmlFor="department">Department</label>
           <select
@@ -95,14 +98,14 @@ const ProgramForm = () => {
             required
           >
             <option value="">Select a department</option>
-            {departments.map(dept => (
+            {departments.map((dept) => (
               <option key={dept.id} value={dept.id}>
                 {dept.name}
               </option>
             ))}
           </select>
         </div>
-        
+
         <div className="form-group">
           <label htmlFor="level">Program Level</label>
           <select
@@ -116,13 +119,17 @@ const ProgramForm = () => {
             <option value="I">Integrated Baccalaureate-Masters</option>
           </select>
         </div>
-        
+
         <div className="form-actions">
-          <button type="button" onClick={() => navigate('/programs')} className="btn-cancel">
+          <button
+            type="button"
+            onClick={() => navigate("/programs")}
+            className="btn-cancel"
+          >
             Cancel
           </button>
           <button type="submit" className="btn-submit" disabled={loading}>
-            {loading ? 'Creating...' : 'Create Program'}
+            {loading ? "Creating..." : "Create Program"}
           </button>
         </div>
       </form>

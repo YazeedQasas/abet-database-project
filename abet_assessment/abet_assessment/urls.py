@@ -15,7 +15,7 @@ from assessment.views import (
     AssessmentViewSet, ContinuousImprovementViewSet, AcademicPerformanceViewSet,
     AssessmentLearningOutcomeViewSet, AssessmentLearningOutcomeABETViewSet, DashboardStatsView,AuditLogListAPIView,
     ABETOutcomeViewSet, AssessmentEventViewSet, program_averages, abet_accreditation_status, debug_abet_outcomes, assessment_methods_summary,
-    compliance_dashboard, FacultyTrainingViewSet, faculty_training_stats
+    compliance_dashboard, FacultyTrainingViewSet, faculty_training_stats, RecentActivitiesAPIView
 )
 
 from reports.views import (
@@ -69,6 +69,7 @@ urlpatterns = [
     path('api-auth/', include('rest_framework.urls')),
     path('api/dashboard-stats/', DashboardStatsView.as_view()),
     path('api/audit-logs/', AuditLogListAPIView.as_view(), name='audit-log-list'),
+    path('api/recent-activities/', RecentActivitiesAPIView.as_view(), name='recent-activities'),
     path('api/program-averages/', program_averages, name='program-averages'),
     path('api/abet-accreditation-status/', abet_accreditation_status, name='abet-accreditation-status'),
     path('api/debug-abet/', debug_abet_outcomes, name='debug-abet'),

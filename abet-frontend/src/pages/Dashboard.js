@@ -3,12 +3,32 @@ import "./Dashboard.css";
 import { AuthContext } from "../context/AuthContext";
 import { dashboardAPI } from "../services/dashboardAPI";
 import axios from "axios";
+import pdfExportService from "../services/pdfExportService";
+import logo from "../assets/AISABET.png";
+import logoBlack from "../assets/AISABETBlack.png";
+import { FaFilePdf, FaSpinner } from "react-icons/fa";
 
 const Dashboard = () => {
   const [selectedSemester, setSelectedSemester] = useState("Fall 2024");
   const [activeTab, setActiveTab] = useState("overview");
 
+  const [exporting, setExporting] = useState(false);
+  const [stats, setStats] = useState({
+    totalPrograms: 0,
+    activeAssessments: 0,
+    facultyCount: 0,
+    studentCount: 0,
+    complianceRate: 0,
+    outcomesCompliance: 0,
+    curriculumCompliance: 0,
+    facultyCompliance: 0,
+    improvementCompliance: 0,
+  });
+  const [programs, setPrograms] = useState([]);
+  const [assessments, setAssessments] = useState([]);
+
   // New state for backend data
+  const [recentActivities, setRecentActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [progressMetrics, setProgressMetrics] = useState([]);
@@ -76,7 +96,7 @@ const Dashboard = () => {
         { name: "abetOutcomes", call: dashboardAPI.getABETOutcomes() },
         {
           name: "facultyTraining",
-          call: axios.get("http://localhost:8000/api/faculty-training/", {
+          call: axios.get("http://localhost:8001/api/faculty-training/", {
             headers: {
               Authorization: `Token ${localStorage.getItem("token")}`,
             },
@@ -84,7 +104,13 @@ const Dashboard = () => {
         }
       );
 
-      // Rest of your existing apiCalls logic...
+      if (currentUser) {
+        apiCalls.push({
+          name: "recentActivities",
+          call: dashboardAPI.getRecentActivitiesForDashboard(),
+        });
+      }
+
       if (hasPermission("faculty") || hasPermission("admin")) {
         apiCalls.push(
           {
@@ -166,9 +192,55 @@ const Dashboard = () => {
                 newDashboardData.complianceMetrics =
                   statsData.compliance_metrics;
               }
+
+              // Update basic stats for PDF export
+              if (statsData.basic_stats) {
+                setBasicStats(statsData.basic_stats);
+
+                // Update stats state for PDF export
+                setStats({
+                  totalPrograms: statsData.basic_stats.programs || 0,
+                  activeAssessments: statsData.basic_stats.assessments || 0,
+                  facultyCount: statsData.basic_stats.departments || 0,
+                  studentCount: statsData.basic_stats.courses || 0,
+                  complianceRate:
+                    statsData.progress_metrics?.find((m) =>
+                      m.title?.includes("Student Outcomes")
+                    )?.percentage || 0,
+                  outcomesCompliance:
+                    statsData.progress_metrics?.find((m) =>
+                      m.title?.includes("Assessment")
+                    )?.percentage || 0,
+                  curriculumCompliance:
+                    statsData.progress_metrics?.find((m) =>
+                      m.title?.includes("Syllabi")
+                    )?.percentage || 0,
+                  facultyCompliance:
+                    statsData.progress_metrics?.find((m) =>
+                      m.title?.includes("Faculty")
+                    )?.percentage || 0,
+                  improvementCompliance: 85,
+                });
+              }
+
+              // Update programs and assessments for PDF export
+              if (statsData.courses_data) {
+                setPrograms(statsData.courses_data); // Using courses as programs
+              }
+              if (statsData.assessment_data) {
+                setAssessments(statsData.assessment_data);
+              }
               break;
 
-            // ADD THIS NEW CASE:
+            case "recentActivities":
+              const activitiesData = response.value.data;
+              setRecentActivities(activitiesData);
+              newDashboardData.recentActivities = activitiesData;
+              console.log(
+                "Recent activities loaded:",
+                response.value.data.length
+              );
+              break;
             case "facultyTraining":
               newDashboardData.facultyTrainings = response.value.data;
               console.log(
@@ -211,6 +283,249 @@ const Dashboard = () => {
     }
   };
 
+  const processLogoForPDF = async (logoUrl) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+
+      img.onload = function () {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+
+        // Set canvas to a reasonable size for PDF
+        const targetSize = 100;
+        canvas.width = targetSize;
+        canvas.height = targetSize;
+
+        // Add white background to ensure visibility
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, targetSize, targetSize);
+
+        // Draw the image scaled to fit
+        const scale = Math.min(
+          targetSize / this.naturalWidth,
+          targetSize / this.naturalHeight
+        );
+        const scaledWidth = this.naturalWidth * scale;
+        const scaledHeight = this.naturalHeight * scale;
+        const x = (targetSize - scaledWidth) / 2;
+        const y = (targetSize - scaledHeight) / 2;
+
+        ctx.drawImage(this, x, y, scaledWidth, scaledHeight);
+
+        resolve(canvas.toDataURL("image/png"));
+      };
+
+      img.onerror = () => {
+        console.warn("Logo could not be loaded, using fallback");
+        resolve(null);
+      };
+
+      img.src = logoUrl;
+    });
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      setExporting(true);
+
+      // Process logo first
+      const processedLogo = logoBlack
+        ? await processLogoForPDF(logoBlack)
+        : null;
+
+      // Extract REAL student outcomes from your dashboardData.abetOutcomes
+      const extractRealStudentOutcomes = () => {
+        const realOutcomes =
+          dashboardData.abetOutcomes.length > 0
+            ? dashboardData.abetOutcomes
+            : abetOutcomes;
+
+        return realOutcomes.map((outcome) => {
+          let score, percentage, status;
+
+          if (outcome.score !== undefined && outcome.score > 0) {
+            score = outcome.score;
+            percentage = (score / 4.0) * 100;
+          } else if (
+            outcome.current_score !== undefined &&
+            outcome.current_score > 0
+          ) {
+            percentage = outcome.current_score;
+            score = (percentage / 100) * 4.0;
+          } else {
+            score = 0;
+            percentage = 0;
+          }
+
+          const target = outcome.target || outcome.target_score || 4.0;
+          if (score >= target) {
+            status = score > target ? "Exceeded" : "Target Met";
+          } else {
+            status = "Below Target";
+          }
+
+          return {
+            outcome: outcome.id || outcome.label || outcome.name,
+            score: score,
+            target: target,
+            percentage: percentage,
+            status: status,
+            description:
+              outcome.label || outcome.description || "Engineering competency",
+          };
+        });
+      };
+
+      // Calculate actual assessment count from available data
+      const calculateAssessmentCount = () => {
+        // Try multiple sources for assessment count
+        let count = 0;
+
+        // Option 1: Use ABET outcomes as assessments (most reliable)
+        if (dashboardData.abetOutcomes?.length > 0) {
+          count = dashboardData.abetOutcomes.length;
+        }
+        // Option 2: Use static abetOutcomes as fallback
+        else if (abetOutcomes?.length > 0) {
+          count = abetOutcomes.length;
+        }
+        // Option 3: Count courses with assessment scores
+        else if (dashboardData.coursesData?.length > 0) {
+          count = dashboardData.coursesData.filter(
+            (course) =>
+              course.assessmentScore > 0 || course.assessment_score > 0
+          ).length;
+        }
+        // Option 4: Use assessments state if populated
+        else if (assessments?.length > 0) {
+          count = assessments.length;
+        }
+        // Option 5: Use basic stats as final fallback
+        else {
+          count = basicStats.assessments || 0;
+        }
+
+        return count;
+      };
+
+      const exportData = {
+        overview: {
+          totalPrograms:
+            dashboardData.coursesData?.length || basicStats.programs || 6,
+          activeAssessments: calculateAssessmentCount(), // Fixed this line
+          facultyCount:
+            dashboardData.coursesData?.filter(
+              (course) => course.instructor && course.instructor !== "TBD"
+            ).length ||
+            basicStats.departments ||
+            1,
+          studentCount:
+            dashboardData.coursesData?.reduce(
+              (total, course) => total + (course.enrollment || 0),
+              0
+            ) ||
+            basicStats.courses ||
+            48,
+          complianceRate:
+            progressMetrics.find((m) => m.title?.includes("Student Outcomes"))
+              ?.percentage || 0,
+          lastUpdated: new Date().toLocaleDateString(),
+        },
+
+        progressMetrics: {
+          courseSyllabiUpdate:
+            progressMetrics.find(
+              (m) =>
+                m.title?.includes("Course Syllabi") ||
+                m.title?.includes("Syllabi")
+            )?.percentage || 85,
+          assessmentDataCollected:
+            progressMetrics.find(
+              (m) =>
+                m.title?.includes("Assessment Data") ||
+                m.title?.includes("Assessment")
+            )?.percentage || 92,
+          studentOutcomesMet:
+            progressMetrics.find(
+              (m) =>
+                m.title?.includes("Student Outcomes") ||
+                m.title?.includes("Outcomes")
+            )?.percentage || 78,
+          facultyTrainingComplete:
+            progressMetrics.find(
+              (m) =>
+                m.title?.includes("Faculty Training") ||
+                m.title?.includes("Training")
+            )?.percentage || 67,
+        },
+
+        studentOutcomes: extractRealStudentOutcomes(),
+
+        courses: (dashboardData.coursesData.length > 0
+          ? dashboardData.coursesData
+          : coursesData
+        ).map((course) => ({
+          courseCode: course.code || course.name || "N/A",
+          courseName: course.name || course.course_name || "N/A",
+          instructor: course.instructor || course.instructor_name || "TBD",
+          enrollment: course.enrollment || 0,
+          mappedOutcomes: Array.isArray(course.mapped_outcomes)
+            ? course.mapped_outcomes
+                .map((outcome) =>
+                  typeof outcome === "object" ? outcome.label : outcome
+                )
+                .join(", ")
+            : Array.isArray(course.outcomes)
+            ? course.outcomes.join(", ")
+            : "None",
+          assessmentScore:
+            course.assessmentScore || course.assessment_score || 0,
+          status: course.status || "Needs Review",
+        })),
+
+        recentActivities: (recentActivities || [])
+          .slice(0, 8)
+          .map((activity) => ({
+            description: activity.target_name
+              ? `${activity.action} ${activity.target_name}`
+              : activity.description || "System Activity",
+            timestamp: activity.timestamp
+              ? new Date(activity.timestamp).toLocaleDateString()
+              : new Date().toLocaleDateString(),
+          })),
+      };
+
+      // Debug: Log the assessment count calculation
+      console.log("🔍 Assessment Count Debug:", {
+        abetOutcomesCount: dashboardData.abetOutcomes?.length || 0,
+        staticAbetOutcomesCount: abetOutcomes?.length || 0,
+        coursesWithAssessments:
+          dashboardData.coursesData?.filter(
+            (course) =>
+              course.assessmentScore > 0 || course.assessment_score > 0
+          ).length || 0,
+        assessmentsStateCount: assessments?.length || 0,
+        basicStatsAssessments: basicStats.assessments || 0,
+        finalCalculatedCount: calculateAssessmentCount(),
+      });
+
+      console.log("🔍 Real export data:", {
+        studentOutcomes: exportData.studentOutcomes,
+        progressMetrics: exportData.progressMetrics,
+        courses: exportData.courses.length,
+        activities: exportData.recentActivities.length,
+      });
+
+      await pdfExportService.generateDashboardReport(exportData, processedLogo);
+    } catch (error) {
+      console.error("PDF Export Error:", error);
+      alert(`Failed to generate PDF: ${error.message}`);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   // Add refresh function for your existing refresh button
   const handleRefresh = () => {
     fetchAllDashboardData();
@@ -222,49 +537,49 @@ const Dashboard = () => {
       id: "SO1",
       label: "Engineering Knowledge",
       score: 3.2,
-      target: 3.0,
+      target: 4.0,
       status: "met",
     },
     {
       id: "SO2",
       label: "Problem Analysis",
       score: 2.8,
-      target: 3.0,
+      target: 4.0,
       status: "below",
     },
     {
       id: "SO3",
       label: "Design/Development",
       score: 3.4,
-      target: 3.0,
+      target: 4.0,
       status: "met",
     },
     {
       id: "SO4",
       label: "Investigation",
       score: 3.1,
-      target: 3.0,
+      target: 4.0,
       status: "met",
     },
     {
       id: "SO5",
       label: "Modern Tool Usage",
       score: 3.6,
-      target: 3.0,
+      target: 4.0,
       status: "exceeded",
     },
     {
       id: "SO6",
       label: "Professional Responsibility",
       score: 2.9,
-      target: 3.0,
+      target: 4.0,
       status: "below",
     },
     {
       id: "SO7",
       label: "Communication",
       score: 3.3,
-      target: 3.0,
+      target: 4.0,
       status: "met",
     },
   ];
@@ -385,7 +700,7 @@ const Dashboard = () => {
           {data.map((item, index) => {
             // Add safety checks for each property
             const score = typeof item.score === "number" ? item.score : 0;
-            const target = typeof item.target === "number" ? item.target : 3.0;
+            const target = typeof item.target === "number" ? item.target : 4.0;
             const percentage = target > 0 ? (score / target) * 100 : 0;
 
             return (
@@ -405,6 +720,59 @@ const Dashboard = () => {
               </div>
             );
           })}
+        </div>
+      </div>
+    );
+  };
+
+  const CoursePieChart = ({ data, title }) => {
+    if (!data || data.length === 0) {
+      return (
+        <div className="chart-container">
+          <h3>{title}</h3>
+          <p>No data available</p>
+        </div>
+      );
+    }
+
+    // Calculate total for percentages
+    const total = data.reduce((sum, item) => sum + item.value, 0);
+
+    // Generate CSS conic-gradient
+    let gradientStops = [];
+    let currentPercent = 0;
+
+    data.forEach((item, index) => {
+      const percent = (item.value / total) * 100;
+      gradientStops.push(
+        `${item.color} ${currentPercent}% ${currentPercent + percent}%`
+      );
+      currentPercent += percent;
+    });
+
+    const gradientStyle = {
+      background: `conic-gradient(${gradientStops.join(", ")})`,
+    };
+
+    return (
+      <div className="chart-container">
+        <h3>{title}</h3>
+        <div className="pie-chart-wrapper">
+          <div className="pie-chart" style={gradientStyle}></div>
+          <div className="pie-chart-legend">
+            {data.map((item, index) => (
+              <div key={index} className="legend-item">
+                <div
+                  className="legend-color"
+                  style={{ backgroundColor: item.color }}
+                ></div>
+                <span className="legend-label">
+                  {item.name}: {item.value} (
+                  {((item.value / total) * 100).toFixed(1)}%)
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -440,13 +808,66 @@ const Dashboard = () => {
             : typeof item.current_score === "number"
             ? item.current_score / 25
             : 0, // Convert percentage back to 4-point scale
-        target: item.target || item.target_score || 3.0,
+        target: item.target || item.target_score || 4.0,
         status: item.status || "unknown",
       };
 
       console.log(`📊 Prepared chart data for ${prepared.id}:`, prepared);
       return prepared;
     });
+  };
+
+  const prepareCourseStatusData = (courses) => {
+    console.log("🔍 prepareCourseStatusData received:", courses);
+
+    if (!courses || courses.length === 0) {
+      console.log("❌ No courses data available");
+      return [];
+    }
+
+    const statusCounts = { compliant: 0, needsReview: 0, other: 0 };
+
+    courses.forEach((course, index) => {
+      const status = course.status?.toLowerCase() || "unknown";
+      console.log(`📊 Course ${index + 1}:`, {
+        code: course.code,
+        name: course.name,
+        originalStatus: course.status,
+        processedStatus: status,
+      });
+
+      if (status === "compliant") {
+        statusCounts.compliant++;
+        console.log(`✅ ${course.code} counted as COMPLIANT`);
+      } else if (
+        status === "needs-review" ||
+        status === "needs_improvement" ||
+        status === "needs_assessment"
+      ) {
+        statusCounts.needsReview++;
+        console.log(`⚠️ ${course.code} counted as NEEDS REVIEW`);
+      } else {
+        statusCounts.other++;
+        console.log(
+          `❓ ${course.code} fell into OTHER category with status: "${status}"`
+        );
+      }
+    });
+
+    console.log("📈 Final status counts:", statusCounts);
+
+    const result = [
+      { name: "Compliant", value: statusCounts.compliant, color: "#28a745" },
+      {
+        name: "Needs Review",
+        value: statusCounts.needsReview,
+        color: "#ffc107",
+      },
+      { name: "Other", value: statusCounts.other, color: "#6c757d" },
+    ].filter((item) => item.value > 0);
+
+    console.log("🎯 Pie chart data result:", result);
+    return result;
   };
 
   // Show error state if data fetch failed
@@ -487,9 +908,22 @@ const Dashboard = () => {
               <option value="Spring 2024">Spring 2024</option>
               <option value="Summer 2024">Summer 2024</option>
             </select>
-            <button className="export-btn">
-              <i className="fas fa-download"></i>
-              Export Report
+            <button
+              className="export-btn"
+              onClick={handleExportPDF}
+              disabled={exporting}
+            >
+              {exporting ? (
+                <>
+                  <i className="fas fa-spinner fa-spin"></i>
+                  Generating PDF...
+                </>
+              ) : (
+                <>
+                  <i className="fas fa-download"></i>
+                  Export Report
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -643,41 +1077,139 @@ const Dashboard = () => {
             </div>
             {/* Recent Assessment Activities */}
             <div className="recent-activities">
-              <h3>Recent Assessment Activities</h3>
+              <div className="activities-header">
+                <h3>Recent Assessment Activities</h3>
+                <button
+                  className="view-all-btn"
+                  onClick={() => (window.location.href = "/audit-logs")}
+                >
+                  <i className="fas fa-external-link-alt"></i>
+                  View All Audit Logs
+                </button>
+              </div>
+
               <div className="activity-timeline">
-                <div className="activity-item">
-                  <div className="activity-marker completed"></div>
-                  <div className="activity-content">
-                    <h4>CS 301 Project Rubrics Submitted</h4>
-                    <p>
-                      Dr. Wilson completed assessment for Software Engineering
-                      capstone projects
-                    </p>
-                    <span className="activity-time">2 hours ago</span>
+                {recentActivities.length > 0 ? (
+                  recentActivities.map((log, index) => {
+                    // Helper function to get activity icon based on action
+                    const getActivityIcon = (action) => {
+                      switch (action?.toUpperCase()) {
+                        case "CREATE":
+                          return "completed";
+                        case "UPDATE":
+                          return "pending";
+                        case "DELETE":
+                          return "warning";
+                        default:
+                          return "completed";
+                      }
+                    };
+
+                    // Helper function to format activity title - more descriptive
+                    const getActivityTitle = (log) => {
+                      const action = log.action?.toUpperCase() || "UNKNOWN";
+                      const targetName =
+                        log.target_name ||
+                        `${log.target_model} ${log.target_id}`;
+
+                      switch (action) {
+                        case "CREATE":
+                          return `Created ${targetName}`;
+                        case "UPDATE":
+                          return `Updated ${targetName}`;
+                        case "DELETE":
+                          return `Deleted ${targetName}`;
+                        default:
+                          return `${action} ${targetName}`;
+                      }
+                    };
+
+                    // Helper function to get activity description with username
+                    const getActivityDescription = (log) => {
+                      const username = log.username || "Unknown user";
+                      const action =
+                        log.action?.toLowerCase() || "performed action on";
+                      const model = log.target_model?.toLowerCase() || "item";
+                      const id = log.target_id || "";
+
+                      // Create more natural language descriptions
+                      switch (log.action?.toUpperCase()) {
+                        case "CREATE":
+                          return `${username} has created ${model} ${id}`;
+                        case "UPDATE":
+                          return `${username} has updated ${model} ${id}`;
+                        case "DELETE":
+                          return `${username} has deleted ${model} ${id}`;
+                        default:
+                          return `${username} has ${action} ${model} ${id}`;
+                      }
+                    };
+
+                    // Helper function to format timestamp
+                    const formatTimestamp = (timestamp) => {
+                      const date = new Date(timestamp);
+                      const now = new Date();
+                      const diffInHours = Math.floor(
+                        (now - date) / (1000 * 60 * 60)
+                      );
+
+                      if (diffInHours < 1) {
+                        const diffInMinutes = Math.floor(
+                          (now - date) / (1000 * 60)
+                        );
+                        return diffInMinutes <= 1
+                          ? "Just now"
+                          : `${diffInMinutes} minutes ago`;
+                      } else if (diffInHours < 24) {
+                        return `${diffInHours} hour${
+                          diffInHours > 1 ? "s" : ""
+                        } ago`;
+                      } else {
+                        const diffInDays = Math.floor(diffInHours / 24);
+                        return `${diffInDays} day${
+                          diffInDays > 1 ? "s" : ""
+                        } ago`;
+                      }
+                    };
+
+                    return (
+                      <div
+                        key={log.id || index}
+                        className={`activity-item ${getActivityIcon(
+                          log.action
+                        )}`}
+                      >
+                        <div
+                          className={`activity-marker ${getActivityIcon(
+                            log.action
+                          )}`}
+                        ></div>
+                        <div className="activity-content">
+                          <h4>{getActivityTitle(log)}</h4>
+                          <p>{getActivityDescription(log)}</p>
+                          <span className="activity-time">
+                            {formatTimestamp(log.timestamp)}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="no-activities">
+                    <p>No recent activities found</p>
                   </div>
-                </div>
-                <div className="activity-item">
-                  <div className="activity-marker pending"></div>
-                  <div className="activity-content">
-                    <h4>Student Survey Responses Due</h4>
-                    <p>
-                      End-of-semester surveys for outcome assessment pending
-                    </p>
-                    <span className="activity-time">Due in 3 days</span>
-                  </div>
-                </div>
-                <div className="activity-item">
-                  <div className="activity-marker completed"></div>
-                  <div className="activity-content">
-                    <h4>Faculty Training Session Completed</h4>
-                    <p>
-                      Assessment methodology workshop for new faculty members
-                    </p>
-                    <span className="activity-time">1 week ago</span>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
+
+            <CoursePieChart
+              data={prepareCourseStatusData(
+                dashboardData.coursesData.length > 0
+                  ? dashboardData.coursesData
+                  : coursesData
+              )}
+              title="Course Compliance Status Distribution"
+            />
           </div>
         )}
 
@@ -705,7 +1237,7 @@ const Dashboard = () => {
                   percentage = 0;
                 }
 
-                const target = outcome.target || outcome.target_score || 3.0;
+                const target = outcome.target || outcome.target_score || 4.0;
                 const targetPercentage = (target / 4.0) * 100;
 
                 return (
@@ -735,7 +1267,7 @@ const Dashboard = () => {
                       </span>
                       <span className="target">
                         /{" "}
-                        {(typeof target === "number" ? target : 3.0).toFixed(1)}
+                        {(typeof target === "number" ? target : 4.0).toFixed(1)}
                       </span>
                     </div>
                     {/* FIXED: Change from outcome-progress to progress-bar */}

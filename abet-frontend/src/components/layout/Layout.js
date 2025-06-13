@@ -18,7 +18,11 @@ import {
   FaCog,
   FaGraduationCap,
 } from "react-icons/fa";
-import { MdAssessment, MdOutlineReport } from "react-icons/md";
+import {
+  MdAssessment,
+  MdOutlineReport,
+  MdAdminPanelSettings,
+} from "react-icons/md";
 import axios from "axios";
 
 const Layout = ({ children }) => {
@@ -30,7 +34,7 @@ const Layout = ({ children }) => {
   const handlelogout = async () => {
     try {
       await axios.post(
-        "http://localhost:8000/api/logout/",
+        "http://localhost:8001/api/logout/",
         {},
         {
           headers: {
@@ -61,9 +65,15 @@ const Layout = ({ children }) => {
       label: "Faculty Training",
     },
     { path: "/reports", icon: MdOutlineReport, label: "Reports" },
-    { path: "/archive", icon: FaArchive, label: "Archive" },
+    { path: "http://localhost:8080/", icon: FaArchive, label: "Archive" },
     ...(currentUser?.userType === "admin"
-      ? [{ path: "/users", icon: FaUsers, label: "Users" }]
+      ? [
+          {
+            path: "/AdminDashboard",
+            icon: MdAdminPanelSettings,
+            label: "Admin Dashboard",
+          },
+        ]
       : []),
   ];
 

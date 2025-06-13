@@ -517,3 +517,11 @@ def faculty_training_stats(request):
         'completion_rate': completion_rate,
         'target': 95  # Set your target completion rate
         })
+class RecentActivitiesAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        # Get only the 4 most recent audit logs for dashboard
+        logs = AuditLog.objects.all().order_by('-timestamp')[:4]
+        serializer = AuditLogSerializer(logs, many=True)
+        return Response(serializer.data)

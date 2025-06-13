@@ -5,6 +5,7 @@ import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import Layout from "./components/layout/Layout";
 import Dashboard from "./pages/Dashboard";
+import AdminDashboard from "./pages/AdminDashboard/AdminDashboard";
 import Home from "./pages/Home";
 import ProgramsList from "./pages/programs/ProgramsList";
 import ProgramDetail from "./pages/programs/ProgramDetail";
@@ -61,6 +62,17 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <Dashboard />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/AdminDashboard"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <AdminDashboard />
                 </Layout>
               </ProtectedRoute>
             }
