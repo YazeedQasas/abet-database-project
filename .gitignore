@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+abet-frontend/node_modules/
+*/node_modules/
+
+# Cache directories
+.cache/
+*/cache/
+*/.cache/
+
+# Build outputs
+dist/
+build/
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+
+AIS-page
+assessment
