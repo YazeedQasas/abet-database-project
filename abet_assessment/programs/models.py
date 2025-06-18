@@ -50,6 +50,7 @@ class ProgramEducationalObjective(models.Model):
         return f"PEO for {self.program.name}: {self.description[:50]}..."
 
 class Course(models.Model):
+    code = models.CharField(max_length=20, unique=True, null=True, blank=True)
     name = models.CharField(max_length=100)
     description = models.TextField()
     credits = models.IntegerField()

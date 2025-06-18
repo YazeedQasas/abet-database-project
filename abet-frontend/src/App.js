@@ -30,6 +30,7 @@ import CreateAcademicPerformance from "./pages/assessment/CreateAcademicPerforma
 import CreateLearningOutcome from "./pages/assessment/CreateLearningOutcome";
 import AddTraining from "./pages/FacultyTraining/AddTraining";
 import FacultyTraining from "./pages/FacultyTraining/FacultyTraining";
+import CourseQuestionsPage from "./pages/courses/CourseQuestionsPage";
 
 function App() {
   return (
@@ -78,6 +79,17 @@ function App() {
             }
           />
 
+          <Route
+            path="/courses/:courseCode/questions"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <CourseQuestionsPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
           <Route path="/" element={<Home />} />
 
           <Route
@@ -114,11 +126,11 @@ function App() {
           />
 
           <Route
-            path="/programs/new"
+            path="/courses/:courseId/questions"
             element={
-              <ProtectedRoute requiredRoles={["admin", "faculty"]}>
+              <ProtectedRoute>
                 <Layout>
-                  <ProgramForm />
+                  <CourseQuestionsPage />
                 </Layout>
               </ProtectedRoute>
             }

@@ -7,6 +7,7 @@ import pdfExportService from "../services/pdfExportService";
 import logo from "../assets/AISABET.png";
 import logoBlack from "../assets/AISABETBlack.png";
 import { FaFilePdf, FaSpinner } from "react-icons/fa";
+import { Link } from "react-router-dom";
 
 const Dashboard = () => {
   const [selectedSemester, setSelectedSemester] = useState("Fall 2024");
@@ -836,7 +837,11 @@ const Dashboard = () => {
         processedStatus: status,
       });
 
-      if (status === "compliant") {
+      if (
+        status === "compliant" ||
+        status === "good" ||
+        status === "excellent"
+      ) {
         statusCounts.compliant++;
         console.log(`✅ ${course.code} counted as COMPLIANT`);
       } else if (
@@ -972,39 +977,102 @@ const Dashboard = () => {
 
                 // Determine display values
                 let displayValue = metric.percentage || parseInt(metric.value);
-                let displayTarget = metric.target; // SIMPLIFIED: Just use the target as-is
+                let displayTarget = metric.target;
                 let displayStatus = metric.status;
                 let displayDetails = null;
                 let isStudentOutcomes = false;
 
-                // Special handling for Student Outcomes
+                // FIXED: Proper status determination based on percentage vs target
+                const percentage = displayValue;
+                const targetValue =
+                  parseInt(
+                    displayTarget?.replace("Target ", "").replace("%", "")
+                  ) || 90;
+
+                // Universal status logic based on performance vs target
+                if (percentage >= targetValue) {
+                  displayStatus = percentage >= 95 ? "excellent" : "good"; // ✅ Green for meeting target
+                } else if (percentage >= targetValue * 0.8) {
+                  // 80% of target
+                  displayStatus = "warning"; // ✅ Yellow for approaching target
+                } else {
+                  displayStatus = "critical"; // ✅ Red for below target
+                }
+
+                // Special handling for Student Outcomes (10/10 format)
                 if (
                   metric.title === "Student Outcomes Met" ||
                   metric.name === "Student Outcomes Met"
                 ) {
                   isStudentOutcomes = true;
-                  displayValue = metric.percentage; // This will be "7/10"
-                  displayTarget = `Target: ${metric.target}`; // This will be "Target: 8/10"
+                  displayValue = `${metric.current}/${metric.total}`;
+                  displayTarget = `Target: ${metric.target}`;
                   displayDetails = `${metric.current} of ${metric.total} outcomes meeting threshold`;
+
+                  // FIXED: Proper target parsing for "8/10" format
+                  const ratio = metric.current / metric.total; // 10/10 = 1.0
+
+                  let targetRatio;
+                  if (metric.target.includes("/")) {
+                    // Handle "8/10" format
+                    const [targetNum, targetDenom] = metric.target
+                      .split("/")
+                      .map((num) => parseInt(num.trim()));
+                    targetRatio = targetNum / targetDenom; // 8/10 = 0.8
+                  } else {
+                    // Handle simple number format like "8"
+                    const targetNum = parseInt(
+                      metric.target.replace(/\D/g, "")
+                    );
+                    targetRatio = targetNum / metric.total; // fallback
+                  }
+
+                  console.log("🎯 Student Outcomes Debug:", {
+                    current: metric.current,
+                    total: metric.total,
+                    target: metric.target,
+                    ratio: ratio,
+                    targetRatio: targetRatio,
+                    meetsTarget: ratio >= targetRatio,
+                  });
+
+                  // Clear status logic: 10/10 >= 8/10 should be "good"
+                  if (ratio >= targetRatio) {
+                    displayStatus = ratio === 1.0 ? "excellent" : "good"; // ✅ Green for 10/10
+                  } else if (ratio >= targetRatio * 0.8) {
+                    displayStatus = "warning"; // ✅ Yellow
+                  } else {
+                    displayStatus = "critical"; // ✅ Red
+                  }
+
+                  console.log(
+                    "🎯 Final Student Outcomes Status:",
+                    displayStatus
+                  );
                 }
-                // Override for Faculty Training metrics
+
+                // Special handling for Faculty Training with real-time data
                 else if (
                   metric.title === "Faculty Training Complete" ||
                   metric.name === "Faculty Training Complete"
                 ) {
                   if (realTimeStats) {
                     displayValue = realTimeStats.completionRate;
+                    displayDetails = `${realTimeStats.completed} of ${realTimeStats.total} completed`;
+                    // Faculty Training target is 95%
                     displayStatus =
-                      realTimeStats.completionRate >= 95
+                      displayValue >= 95
+                        ? "excellent"
+                        : displayValue >= 80
                         ? "good"
-                        : realTimeStats.completionRate >= 80
+                        : displayValue >= 60
                         ? "warning"
                         : "critical";
-                    displayDetails = `${realTimeStats.completed} of ${realTimeStats.total} completed`;
                   }
                   displayTarget = `Target: ${metric.target}%`;
                 }
-                // For all other metrics, just add "Target: " and "%"
+
+                // For all other metrics, add "Target: " prefix
                 else {
                   displayTarget = `Target: ${metric.target}%`;
                 }
@@ -1015,7 +1083,8 @@ const Dashboard = () => {
                       <h3>{metric.title || metric.name}</h3>
                       <span
                         className={`status-indicator ${displayStatus}`}
-                      ></span>
+                      ></span>{" "}
+                      {/* ✅ Now uses correct status */}
                     </div>
                     <div className="metric-value">
                       <span className="percentage">
@@ -1029,10 +1098,8 @@ const Dashboard = () => {
                         style={{
                           width: `${
                             isStudentOutcomes
-                              ? metric.current && metric.total
-                                ? (metric.current / metric.total) * 100
-                                : 0
-                              : displayValue
+                              ? (metric.current / metric.total) * 100
+                              : Math.min(displayValue, 100)
                           }%`,
                         }}
                       ></div>
@@ -1040,13 +1107,6 @@ const Dashboard = () => {
                     {displayDetails && (
                       <div className="metric-details">{displayDetails}</div>
                     )}
-                    {!displayDetails &&
-                      metric.current !== undefined &&
-                      !isStudentOutcomes && (
-                        <div className="metric-details">
-                          {metric.current} of {metric.total} completed
-                        </div>
-                      )}
                   </div>
                 );
               })}
@@ -1305,6 +1365,7 @@ const Dashboard = () => {
                     <th>Mapped Outcomes</th>
                     <th>Assessment Score</th>
                     <th>Status</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1381,6 +1442,14 @@ const Dashboard = () => {
                             ? "Compliant"
                             : "Needs Review"}
                         </span>
+                      </td>
+                      <td>
+                        <Link
+                          to={`/courses/${course.code.toLowerCase()}/questions`}
+                          className="action-btn"
+                        >
+                          Manage Questions
+                        </Link>
                       </td>
                     </tr>
                   ))}

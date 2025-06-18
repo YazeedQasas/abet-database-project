@@ -14,13 +14,15 @@ class DepartmentViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [IsAuthenticated(), IsAdminUserType()]  # Only admin can create/update/delete
+            # Only admin can create/update/delete
+            return [IsAuthenticated(), IsAdminUserType()]
         return [IsAuthenticated()]  # Anyone logged in can view
 
 
 class FacultyViewSet(viewsets.ModelViewSet):
     queryset = Faculty.objects.all()
     serializer_class = FacultySerializer
+
 
 class ProgramViewSet(viewsets.ModelViewSet):
     queryset = Program.objects.all()
@@ -39,10 +41,11 @@ class ProgramViewSet(viewsets.ModelViewSet):
         courses = Course.objects.filter(program=program)
         serializer = CourseSerializer(courses, many=True)
         return Response(serializer.data)
-    
+
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [IsAuthenticated(), IsAdminUserType()]  # Only admin can create/update/delete
+            # Only admin can create/update/delete
+            return [IsAuthenticated(), IsAdminUserType()]
         return [IsAuthenticated()]  # Anyone logged in can view
 
 
@@ -50,12 +53,16 @@ class ProgramEducationalObjectiveViewSet(viewsets.ModelViewSet):
     queryset = ProgramEducationalObjective.objects.all()
     serializer_class = ProgramEducationalObjectiveSerializer
 
+
 class CourseViewSet(viewsets.ModelViewSet):
     queryset = Course.objects.all()
     serializer_class = CourseSerializer
+    lookup_field = 'code'
+
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [IsAuthenticated(), IsAdminUserType()]  # Only admin can create/update/delete
+            # Only admin can create/update/delete
+            return [IsAuthenticated(), IsAdminUserType()]
         return [IsAuthenticated()]  # Anyone logged in can view
 
 
@@ -63,8 +70,7 @@ class StudentViewSet(viewsets.ModelViewSet):
     queryset = Student.objects.all()
     serializer_class = StudentSerializer
 
+
 class CourseStudentViewSet(viewsets.ModelViewSet):
     queryset = CourseStudent.objects.all()
     serializer_class = CourseStudentSerializer
-
-

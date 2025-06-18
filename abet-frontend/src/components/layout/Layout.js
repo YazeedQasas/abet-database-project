@@ -30,6 +30,8 @@ const Layout = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
 
   const handlelogout = async () => {
     try {
@@ -76,6 +78,65 @@ const Layout = ({ children }) => {
         ]
       : []),
   ];
+
+  // ✅ NEW: Search functionality
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    setShowSearchSuggestions(value.length > 0);
+  };
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (searchTerm.trim()) {
+      navigateToPage(searchTerm.trim());
+    }
+  };
+
+  const navigateToPage = (term) => {
+    const lowerTerm = term.toLowerCase();
+
+    // Find matching navigation item
+    const matchingItem = navItems.find(
+      (item) =>
+        item.label.toLowerCase().includes(lowerTerm) ||
+        item.path.toLowerCase().includes(lowerTerm)
+    );
+
+    if (matchingItem) {
+      if (matchingItem.path.startsWith("http")) {
+        // External link (Archive)
+        window.open(matchingItem.path, "_blank");
+      } else {
+        navigate(matchingItem.path);
+      }
+      setSearchTerm("");
+      setShowSearchSuggestions(false);
+    } else {
+      // Optional: Show "No results found" or handle custom search logic
+      console.log(`No matching page found for: ${term}`);
+    }
+  };
+
+  const getFilteredSuggestions = () => {
+    if (!searchTerm) return [];
+
+    return navItems
+      .filter((item) =>
+        item.label.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+      .slice(0, 5); // Limit to 5 suggestions
+  };
+
+  const handleSuggestionClick = (item) => {
+    if (item.path.startsWith("http")) {
+      window.open(item.path, "_blank");
+    } else {
+      navigate(item.path);
+    }
+    setSearchTerm("");
+    setShowSearchSuggestions(false);
+  };
 
   return (
     <div className="layout-container">
@@ -148,13 +209,48 @@ const Layout = ({ children }) => {
           </div>
 
           <div className="topbar-center">
+            {/* ✅ UPDATED: Enhanced search container */}
             <div className="search-container">
-              <FaSearch className="search-icon" />
-              <input
-                type="text"
-                placeholder="Search..."
-                className="search-input"
-              />
+              <form onSubmit={handleSearchSubmit}>
+                <FaSearch className="search-icon" />
+                <input
+                  type="text"
+                  placeholder="Search pages..."
+                  className="search-input"
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                  onFocus={() =>
+                    setShowSearchSuggestions(searchTerm.length > 0)
+                  }
+                  onBlur={() =>
+                    setTimeout(() => setShowSearchSuggestions(false), 200)
+                  }
+                />
+              </form>
+
+              {/* ✅ NEW: Search suggestions dropdown */}
+              {showSearchSuggestions && (
+                <div className="search-suggestions">
+                  {getFilteredSuggestions().map((item, index) => {
+                    const IconComponent = item.icon;
+                    return (
+                      <div
+                        key={index}
+                        className="search-suggestion-item"
+                        onClick={() => handleSuggestionClick(item)}
+                      >
+                        <IconComponent className="suggestion-icon" />
+                        <span>{item.label}</span>
+                      </div>
+                    );
+                  })}
+                  {getFilteredSuggestions().length === 0 && (
+                    <div className="search-suggestion-item no-results">
+                      No matching pages found
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

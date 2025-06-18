@@ -13,9 +13,9 @@ from core.views import (
 
 from assessment.views import (
     AssessmentViewSet, ContinuousImprovementViewSet, AcademicPerformanceViewSet,
-    AssessmentLearningOutcomeViewSet, AssessmentLearningOutcomeABETViewSet, DashboardStatsView,AuditLogListAPIView,
+    AssessmentLearningOutcomeViewSet, AssessmentLearningOutcomeABETViewSet, DashboardStatsView, AuditLogListAPIView,
     ABETOutcomeViewSet, AssessmentEventViewSet, program_averages, abet_accreditation_status, debug_abet_outcomes, assessment_methods_summary,
-    compliance_dashboard, FacultyTrainingViewSet, faculty_training_stats, RecentActivitiesAPIView
+    compliance_dashboard, FacultyTrainingViewSet, faculty_training_stats, RecentActivitiesAPIView, AssessmentQuestionViewSet, get_course_academic_performances
 )
 
 from reports.views import (
@@ -25,8 +25,6 @@ from reports.views import (
 from users.views import (
     LogoutView, UserViewSet
 )
-
-
 
 router = DefaultRouter()
 
@@ -39,7 +37,6 @@ router.register(r'students', StudentViewSet)
 router.register(r'course-students', CourseStudentViewSet)
 router.register(r'faculty', FacultyViewSet)
 
-
 # Assessment app routes
 router.register(r'assessments', AssessmentViewSet, basename='assessment')
 router.register(r'continuous-improvements', ContinuousImprovementViewSet, basename='continuousimprovement')
@@ -50,6 +47,7 @@ router.register(r'abetoutcome', ABETOutcomeViewSet)
 router.register(r'assessment-events', AssessmentEventViewSet)
 router.register(r'faculty-training', FacultyTrainingViewSet, basename='faculty-training')
 router.register(r'users', UserViewSet , basename='users')
+router.register(r'assessment-questions', AssessmentQuestionViewSet, basename='assessment-question')
 
 # Core app routes
 router.register(r'institutional-support', InstitutionalSupportViewSet)
@@ -77,8 +75,8 @@ urlpatterns = [
     path('api/assessment-methods-summary/', assessment_methods_summary, name='assessment-methods-summary'),
     path('api/compliance-dashboard/', compliance_dashboard, name='compliance-dashboard'),
     path('api/get-csrf-token/', get_csrf_token, name='get_csrf_token'),
+    path('api/courses/<int:course_id>/academic-performances/', get_course_academic_performances, name='course-academic-performances'),
     path('api/reports/<int:report_id>/comments/', add_comment),
     path('api/current-user/', current_user),
-    path('api/logout/', LogoutView.as_view(), name='logout'),
-
+    path('api/logout/', LogoutView.as_view(), name='logout')
 ]

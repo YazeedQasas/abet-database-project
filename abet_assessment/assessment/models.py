@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from .middleware import get_current_user
 
+
 class AuditedModel(models.Model):
     class Meta:
         abstract = True
@@ -14,16 +15,42 @@ class AuditedModel(models.Model):
         self._current_user = get_current_user()
         super().delete(*args, **kwargs)
 
+
 class Assessment(AuditedModel):
     id = models.BigAutoField(primary_key=True)
     name = models.CharField(max_length=100)
     date = models.DateField()
-    course = models.ForeignKey('programs.Course', on_delete=models.CASCADE, related_name='assessments')
+    course = models.ForeignKey(
+        'programs.Course', on_delete=models.CASCADE, related_name='assessments')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.name
+
+
+class AssessmentQuestion(models.Model):
+    course = models.ForeignKey(
+        'programs.Course', on_delete=models.CASCADE, related_name='assessment_questions')
+    academic_performance = models.ForeignKey(
+        'AcademicPerformance', on_delete=models.CASCADE, related_name='questions')
+    question_no = models.PositiveIntegerField()
+    question_text = models.TextField()
+    mapped_outcomes = models.ManyToManyField('ABETOutcome', blank=True)
+    weight = models.FloatField(help_text="Weight as a percentage (0-100)")
+
+    class Meta:
+        unique_together = ('academic_performance', 'question_no')
+
+    def save(self, *args, **kwargs):
+        if not self.question_no:
+            last = AssessmentQuestion.objects.filter(
+                academic_performance=self.academic_performance).order_by('-question_no').first()
+            self.question_no = (last.question_no if last else 0) + 1
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Q{self.question_no}: {self.question_text[:40]}"
 
 
 class ContinuousImprovement(AuditedModel):
@@ -32,7 +59,8 @@ class ContinuousImprovement(AuditedModel):
     effectiveness_measure = models.TextField()
     weight = models.IntegerField()
     score = models.FloatField()
-    assessment_id = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name='continuous_improvements')
+    assessment = models.ForeignKey(
+        Assessment, on_delete=models.CASCADE, related_name='continuous_improvements')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -50,10 +78,11 @@ class AcademicPerformance(AuditedModel):
     course_id = models.BigIntegerField()
     instructor_id = models.BigIntegerField()
     description = models.TextField()
-    assessment_id = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name='academic_performances')
+    assessment_id = models.ForeignKey(
+        Assessment, on_delete=models.CASCADE, related_name='academic_performances')
 
     def __str__(self):
-        return f"Academic Performance for Assessment {self.assessment_id}"
+        return f"{self.assessmentType} - {self.assessment_id.name}"
 
 
 class ABETOutcome(models.Model):
@@ -68,8 +97,10 @@ class AssessmentLearningOutcome(AuditedModel):
     AssesssmentLearningOutcome_id = models.BigAutoField(primary_key=True)
     description = models.TextField()
     program_id = models.BigIntegerField()
-    assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name='learning_outcomes')
-    abet_outcomes = models.ManyToManyField('ABETOutcome', related_name='learning_outcomes')
+    assessment = models.ForeignKey(
+        Assessment, on_delete=models.CASCADE, related_name='learning_outcomes')
+    abet_outcomes = models.ManyToManyField(
+        'ABETOutcome', related_name='learning_outcomes')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -78,8 +109,10 @@ class AssessmentLearningOutcome(AuditedModel):
 
 
 class AssessmentLearningOutcome_ABET(models.Model):
-    assessment_lo = models.ForeignKey(AssessmentLearningOutcome, on_delete=models.CASCADE, related_name="outcome_scores")
-    abet_outcome = models.ForeignKey(ABETOutcome, on_delete=models.CASCADE, related_name="outcome_scores")
+    assessment_lo = models.ForeignKey(
+        AssessmentLearningOutcome, on_delete=models.CASCADE, related_name="outcome_scores")
+    abet_outcome = models.ForeignKey(
+        ABETOutcome, on_delete=models.CASCADE, related_name="outcome_scores")
 
     score = models.IntegerField()
     level_description = models.CharField(max_length=255, blank=True)
@@ -88,7 +121,8 @@ class AssessmentLearningOutcome_ABET(models.Model):
         ('direct', 'Direct'),
         ('indirect', 'Indirect'),
     ]
-    evidence_type = models.CharField(max_length=10, choices=EVIDENCE_CHOICES, default='direct')
+    evidence_type = models.CharField(
+        max_length=10, choices=EVIDENCE_CHOICES, default='direct')
 
     def save(self, *args, **kwargs):
         LEVEL_MAP = {
@@ -102,7 +136,6 @@ class AssessmentLearningOutcome_ABET(models.Model):
         else:
             self.level_description = "Unspecified"
         super().save(*args, **kwargs)
-
 
 
 class AuditLog(models.Model):
@@ -121,7 +154,7 @@ class AuditLog(models.Model):
 
     def __str__(self):
         return f"{self.user} {self.action} on {self.target_model} #{self.target_id}"
-    
+
 
 class AssessmentEvent(models.Model):
     EVENT_TYPES = (
@@ -129,17 +162,19 @@ class AssessmentEvent(models.Model):
         ('UPDATE', 'Updated'),
         ('DELETE', 'Deleted'),
     )
-    
+
     assessment_id = models.BigIntegerField()
     assessment_name = models.CharField(max_length=100)
     event_type = models.CharField(max_length=10, choices=EVENT_TYPES)
-    score = models.FloatField(null=True, blank=True)  # ABET score at time of event
+    # ABET score at time of event
+    score = models.FloatField(null=True, blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
     user = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True)
     average_score_at_time = models.FloatField(default=0.0)
-    
+
     def __str__(self):
         return f"{self.event_type} - {self.assessment_name} ({self.timestamp})"
+
 
 class ABETComplianceMetric(models.Model):
     METRIC_TYPES = [
@@ -148,18 +183,19 @@ class ABETComplianceMetric(models.Model):
         ('student_outcomes', 'Student Outcomes Met'),
         ('faculty_training', 'Faculty Training Complete'),
     ]
-    
-    metric_type = models.CharField(max_length=20, choices=METRIC_TYPES, unique=True)
+
+    metric_type = models.CharField(
+        max_length=20, choices=METRIC_TYPES, unique=True)
     current_value = models.FloatField(default=0.0)
     target_value = models.FloatField(default=100.0)
     last_updated = models.DateTimeField(auto_now=True)
     academic_year = models.CharField(max_length=9, default='2024-2025')
-    
+
     def get_percentage(self):
         if self.target_value > 0:
             return min(100.0, (self.current_value / self.target_value) * 100)
         return 0.0
-    
+
     def get_status(self):
         percentage = self.get_percentage()
         if percentage >= 95:
@@ -170,36 +206,41 @@ class ABETComplianceMetric(models.Model):
             return 'warning'
         else:
             return 'critical'
-    
+
     def __str__(self):
         return f"{self.get_metric_type_display()}: {self.get_percentage():.1f}%"
 
+
 class CourseSyllabus(models.Model):
-    course = models.OneToOneField('programs.Course', on_delete=models.CASCADE, related_name='syllabus')
+    course = models.OneToOneField(
+        'programs.Course', on_delete=models.CASCADE, related_name='syllabus')
     is_updated = models.BooleanField(default=False)
     last_updated = models.DateTimeField(null=True, blank=True)
     updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     academic_year = models.CharField(max_length=9, default='2024-2025')
-    
+
     def __str__(self):
         return f"Syllabus for {self.course.name}"
 
+
 class FacultyTraining(models.Model):
-    faculty = models.ForeignKey('programs.Faculty', on_delete=models.CASCADE, related_name='trainings')
+    faculty = models.ForeignKey(
+        'programs.Faculty', on_delete=models.CASCADE, related_name='trainings')
     training_type = models.CharField(max_length=100)
     completion_date = models.DateField(null=True, blank=True, default=None)
     is_completed = models.BooleanField(default=False)
     academic_year = models.CharField(max_length=9, default='2024-2025')
-    
+
     def __str__(self):
         return f"{self.faculty.name} - {self.training_type}"
+
 
 class AssessmentMethod(models.Model):
     ASSESSMENT_TYPES = [
         ('direct', 'Direct Assessment'),
         ('indirect', 'Indirect Assessment'),
     ]
-    
+
     METHOD_TYPES = [
         ('exam_questions', 'Exam Questions'),
         ('project_rubrics', 'Project Rubrics'),
@@ -208,26 +249,30 @@ class AssessmentMethod(models.Model):
         ('lab_reports', 'Lab Reports'),
         ('capstone_projects', 'Capstone Projects'),
     ]
-    
+
     name = models.CharField(max_length=100, choices=METHOD_TYPES)
     assessment_type = models.CharField(max_length=20, choices=ASSESSMENT_TYPES)
     description = models.TextField()
-    target_completion_rate = models.FloatField(default=80.0)  # Target percentage
+    target_completion_rate = models.FloatField(
+        default=80.0)  # Target percentage
     target_score = models.FloatField(default=3.0)  # Target average score
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+
 class CourseAssessmentMethod(models.Model):
     course = models.ForeignKey('programs.Course', on_delete=models.CASCADE)
-    assessment_method = models.ForeignKey(AssessmentMethod, on_delete=models.CASCADE)
+    assessment_method = models.ForeignKey(
+        AssessmentMethod, on_delete=models.CASCADE)
     assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE)
     completion_status = models.BooleanField(default=False)
     score = models.FloatField(null=True, blank=True)
     completion_date = models.DateField(null=True, blank=True)
     semester = models.CharField(max_length=20, default='Fall 2024')
-    
+
     class Meta:
         unique_together = ['course', 'assessment_method', 'assessment']
+
 
 class ComplianceMetric(models.Model):
     METRIC_TYPES = [
@@ -236,7 +281,7 @@ class ComplianceMetric(models.Model):
         ('time_to_completion', 'Time to Completion'),
         ('abet_coverage', 'ABET Outcome Coverage'),
     ]
-    
+
     name = models.CharField(max_length=100)
     metric_type = models.CharField(max_length=30, choices=METRIC_TYPES)
     target_value = models.FloatField()
