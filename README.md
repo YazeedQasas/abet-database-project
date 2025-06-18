@@ -2,6 +2,12 @@
 
 A comprehensive web application for managing ABET (Accreditation Board for Engineering and Technology) assessment processes, built with Django REST Framework backend and React frontend.
 
+![Screenshot 2025-06-17 234812](https://github.com/user-attachments/assets/014868f4-08c3-4b17-ba90-2634a663cb17)
+
+![Screenshot 2025-06-17 234858](https://github.com/user-attachments/assets/58f49443-b10e-4622-9813-da046422d100)
+
+![Screenshot 2025-06-17 235322](https://github.com/user-attachments/assets/27c7048c-3370-4c18-8f93-428cff0bdb4b)
+
 ## 🎥 Demo Video
 
 [![ABET Assessment Demo](https://img.shields.io/badge/Watch-Demo%20Video-red?style=for-the-badge&logo=youtube)](https://youtu.be/vVUlcCkmDNM?si=FCXPTOjkwCQQb-Lj)
