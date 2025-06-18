@@ -10,7 +10,7 @@ A comprehensive web application for managing ABET (Accreditation Board for Engin
 
 ## 📋 Table of Contents
 
-- [Features]
+- (#features)
 - [System Requirements](#system-requirements)
 - [Installation](#installation)
 - [Dependencies](#dependencies)
@@ -20,7 +20,7 @@ A comprehensive web application for managing ABET (Accreditation Board for Engin
 - [Development_setup](#Development_setup)
 - [Contributing](#contributing)
 
-## ✨ Features (#features)
+## ✨ Features [Features]
 
 - **Dashboard Analytics**: Comprehensive ABET compliance tracking and metrics
 - **User Management**: Role-based access control (Admin, Faculty, Evaluator, Reviewer)
