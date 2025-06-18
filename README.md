@@ -1,6 +1,6 @@
 # ABET Assessment Management System
 
-A comprehensive web application for managing ABET (Accreditation Board for Engineering and Technology) assessment processes, built with Django REST Framework backend and React frontend.
+A comprehensive web application for managing ABET (Accreditation Board for Engineering and Technology) assessment processes, built with Django REST Framework and Flask backend with React frontend.
 
 ![Screenshot 2025-06-17 234812](https://github.com/user-attachments/assets/014868f4-08c3-4b17-ba90-2634a663cb17)
 
