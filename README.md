@@ -8,6 +8,9 @@ A comprehensive web application for managing ABET (Accreditation Board for Engin
 
 ![Screenshot 2025-06-17 235322](https://github.com/user-attachments/assets/27c7048c-3370-4c18-8f93-428cff0bdb4b)
 
+![Screenshot 2025-06-18 000524](https://github.com/user-attachments/assets/24a91107-059e-4f2c-a616-8e24b3c13815)
+
+
 ## 🎥 Demo Video
 
 [![ABET Assessment Demo](https://img.shields.io/badge/Watch-Demo%20Video-red?style=for-the-badge&logo=youtube)](https://youtu.be/vVUlcCkmDNM?si=FCXPTOjkwCQQb-Lj)
