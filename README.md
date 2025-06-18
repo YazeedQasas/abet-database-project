@@ -16,11 +16,11 @@ A comprehensive web application for managing ABET (Accreditation Board for Engin
 - [Dependencies](#dependencies)
 - [Configuration](#configuration)
 - [Running the Application](#running-the-application)
-- [API Documentation](#api-documentation)
 - [Project Structure](#project-structure)
+- [Development_setup](#Development_setup)
 - [Contributing](#contributing)
 
-## ✨ Features
+## ✨ Features [#features]
 
 - **Dashboard Analytics**: Comprehensive ABET compliance tracking and metrics
 - **User Management**: Role-based access control (Admin, Faculty, Evaluator, Reviewer)
@@ -31,7 +31,7 @@ A comprehensive web application for managing ABET (Accreditation Board for Engin
 - **Audit Logging**: Complete activity tracking and audit trails
 - **Real-time Updates**: Live dashboard updates and notifications
 
-## 🖥️ System Requirements
+## 🖥️ System Requirements [#system-requirements]
 
 ### Backend Requirements
 - Python 3.8 or higher
@@ -45,7 +45,7 @@ A comprehensive web application for managing ABET (Accreditation Board for Engin
 ### Operating System
 - Windows 10/11, macOS 10.15+, or Linux (Ubuntu 20.04+ recommended)
 
-## 🚀 Installation
+## 🚀 Installation [#installation]
 
 ### 1. Clone the Repository
 
@@ -59,7 +59,7 @@ cd abet-database-project
 python -m venv venv
 source venv/bin/activate 
 
-# Install dependencies
+# Install dependencies [#dependencies]
 pip install -r requirements.txt
 
 # For development
@@ -89,12 +89,8 @@ python manage.py createsuperuser
 cd ../frontend
 npm install
 
-text
 
-## 📦 Dependencies
-
-
-## ⚙️ Configuration
+## ⚙️ Configuration [#configuration]
 
 ### 1. Environment Variables
 
@@ -117,7 +113,7 @@ CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 
 
 
-### 2. Frontend Configuration
+### 2. Frontend Configuration 
 
 Create a `.env` file in the frontend directory:
 
@@ -126,7 +122,7 @@ REACT_APP_BASE_URL=http://localhost:8001
 
 text
 
-## 🏃‍♂️ Running the Application
+## 🏃‍♂️ Running the Application [#running-the-application]
 
 ### 1. Start the Backend Server
 
@@ -177,7 +173,7 @@ The React application will start at `http://localhost:3000`
 - `POST /api/users/` - Create user
 - `PUT /api/users/{id}/` - Update user
 
-## 📁 Project Structure
+## 📁 Project Structure [#project-structure]
 
 abet-assessment-system/
 ├── backend/
@@ -205,7 +201,7 @@ abet-assessment-system/
 └── README.md
 
 
-## 🔧 Development Setup
+## 🔧 Development Setup [#Development_setup]
 
 ### Database Seeding (Optional)
 
@@ -216,7 +212,7 @@ Or create custom fixtures
 python manage.py dumpdata --indent 2 > fixtures/backup.json
 
 
-## 🤝 Contributing
+## 🤝 Contributing [#contributing]
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
