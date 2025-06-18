@@ -58,7 +58,7 @@ A comprehensive web application for managing ABET (Accreditation Board for Engin
 git clone https://github.com/yourusername/abet-assessment-system.git
 cd abet-database-project
 
-text
+
 
 ### 2. Backend Setup
 
@@ -72,7 +72,7 @@ venv\Scripts\activate
 On macOS/Linux
 source venv/bin/activate
 
-text
+
 
 #### Install Python Dependencies
 pip install -r requirements.txt
@@ -80,7 +80,7 @@ pip install -r requirements.txt
 For development
 pip install -r requirements-dev.txt
 
-text
+
 
 #### Database Setup
 Run migrations
@@ -90,14 +90,14 @@ python manage.py migrate
 Create superuser
 python manage.py createsuperuser
 
-text
+
 
 ### 3. Frontend Setup
 
 cd abet_frontend/
 npm install
 
-text
+
 
 <a id="dependencies"></a>
 ## 📦 Dependencies
@@ -151,7 +151,7 @@ pytz==2023.3
 Additional Utilities
 requests==2.31.0
 
-text
+
 
 ### Frontend Dependencies (package.json)
 
@@ -191,7 +191,6 @@ text
 }
 }
 
-text
 
 <a id="configuration"></a>
 ## ⚙️ Configuration
@@ -205,7 +204,6 @@ CREATE USER 'abet_user'@'localhost' IDENTIFIED BY '123';
 GRANT ALL PRIVILEGES ON abet_assessment.* TO 'abet_user'@'localhost';
 FLUSH PRIVILEGES;
 
-text
 
 Update your Django settings:
 
@@ -219,7 +217,7 @@ DATABASES = {
 }
 }
 
-text
+
 
 ### 2. CORS Settings
 
@@ -228,7 +226,7 @@ CORS_ALLOWED_ORIGINS = [
 ]
 CORS_ALLOW_CREDENTIALS = True
 
-text
+
 
 ### 3. Frontend Configuration
 
@@ -237,7 +235,7 @@ Create a `.env` file in the frontend directory:
 REACT_APP_API_URL=http://localhost:8001/api
 REACT_APP_BASE_URL=http://localhost:8001
 
-text
+
 
 <a id="running-the-application"></a>
 ## 🏃‍♂️ Running the Application
@@ -247,7 +245,7 @@ text
 cd abet_assessment
 python manage.py runserver 8001
 
-text
+
 
 The Django server will start at `http://localhost:8001`
 
@@ -256,7 +254,6 @@ The Django server will start at `http://localhost:8001`
 cd abet_frontend/
 npm start
 
-text
 
 The React application will start at `http://localhost:3000`
 
@@ -353,7 +350,6 @@ abet-assessment-system/
 │ └── public/
 └── README.md
 
-text
 
 <a id="development-setup"></a>
 ## 🔧 Development Setup
@@ -366,7 +362,6 @@ python manage.py loaddata fixtures/sample_data.json
 Or create custom fixtures
 python manage.py dumpdata --indent 2 > fixtures/backup.json
 
-text
 
 ### Running Tests
 
@@ -378,7 +373,6 @@ Frontend tests
 cd frontend
 npm test
 
-text
 
 ### Development Dependencies (requirements-dev.txt)
 
@@ -405,8 +399,6 @@ django-debug-toolbar==4.2.0
 API Documentation
 drf-spectacular==0.26.5
 
-text
-
 ## 🐳 Docker Setup (Optional)
 
 ### Dockerfile for Backend
@@ -417,7 +409,7 @@ RUN pip install -r requirements.txt
 COPY . .
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8001"]
 
-text
+
 
 ### docker-compose.yml
 version: '3.8'
@@ -451,7 +443,7 @@ volumes:
 volumes:
 mysql_data:
 
-text
+
 
 <a id="contributing"></a>
 ## 🤝 Contributing
