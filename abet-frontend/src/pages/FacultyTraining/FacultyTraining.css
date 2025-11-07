@@ -1,0 +1,460 @@
+/* src/pages/FacultyTraining/FacultyTraining.css */
+
+/* Faculty Training Container */
+.faculty-training-container {
+  min-height: 100vh;
+  background: transparent;
+  padding: 0;
+}
+
+/* Header Styles - matching dashboard header */
+.training-header {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 111, 45, 0.2);
+  box-shadow: 0 10px 30px rgba(255, 111, 45, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin-bottom: 2rem;
+  padding: 2rem; /* Add padding directly to header */
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2rem;
+}
+
+.header-content h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #0f0f0f, #5a5a5a);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 0.5rem 0;
+}
+
+.header-content p {
+  color: #718096;
+  font-size: 1rem;
+  font-weight: 500;
+  margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.add-training-btn {
+  background: linear-gradient(135deg, #ff6f2d, #ff8c42);
+  color: white;
+  border: none !important; /* Force remove border */
+  outline: none !important; /* Remove focus outline */
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 15px rgba(255, 111, 45, 0.3);
+  text-decoration: none;
+}
+
+.add-training-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(255, 111, 45, 0.4);
+  border: none !important;
+}
+
+.add-training-btn:focus,
+.add-training-btn:active,
+.add-training-btn:focus-visible {
+  border: none !important;
+  outline: none !important;
+  box-shadow: 0 4px 15px rgba(255, 111, 45, 0.3) !important;
+}
+
+/* Main Content */
+.faculty-training-container .training-header + * {
+  padding: 0 2rem;
+}
+
+/* Training Statistics - matching dashboard metrics */
+.training-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  padding: 0 2rem;
+}
+
+.stat-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  padding: 1.5rem;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(255, 111, 45, 0.1);
+  border: 1px solid rgba(255, 111, 45, 0.1);
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 30px rgba(255, 111, 45, 0.15);
+}
+
+.stat-icon {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  color: white;
+}
+
+.stat-icon.total { 
+  background: linear-gradient(135deg, #6366f1, #8b5cf6); 
+}
+
+.stat-icon.completed { 
+  background: linear-gradient(135deg, #ff6f2d, #ff8c42); 
+}
+
+.stat-icon.pending { 
+  background: linear-gradient(135deg, #ffb347, #ffd700); 
+}
+
+.stat-icon.rate { 
+  background: linear-gradient(135deg, #10b981, #34d399); 
+}
+
+.stat-content h3 {
+  margin: 0;
+  font-size: 1.875rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #161616, #181717);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1.1;
+  margin-bottom: 0.5rem;
+}
+
+.stat-content p {
+  margin: 0;
+  color: #718096;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+/* Filter Controls */
+.training-controls {
+  margin-bottom: 2rem;
+  padding: 0 2rem;
+}
+
+.filter-buttons {
+  display: flex;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  padding: 0.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(255, 111, 45, 0.1);
+  border: 1px solid rgba(255, 111, 45, 0.1);
+  width: fit-content;
+}
+
+/* Force remove all button borders */
+button.add-training-btn,
+a.add-training-btn {
+  border: none !important;
+  outline: none !important;
+}
+
+button.add-training-btn:focus,
+button.add-training-btn:active,
+a.add-training-btn:focus,
+a.add-training-btn:active {
+  border: none !important;
+  outline: none !important;
+}
+
+
+.filter-btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #718096;
+}
+
+.filter-btn:hover {
+  background: rgba(255, 111, 45, 0.1);
+  color: #ff6f2d;
+}
+
+.filter-btn.active {
+  background: linear-gradient(135deg, #ff6f2d, #ff8c42);
+  color: white;
+  box-shadow: 0 2px 8px rgba(255, 111, 45, 0.3);
+}
+
+/* Training Grid */
+.training-list {
+  padding: 0 2rem;
+}
+
+.training-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1.5rem;
+}
+
+.training-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(255, 111, 45, 0.1);
+  border: 1px solid rgba(255, 111, 45, 0.1);
+  overflow: hidden;
+  transition: all 0.3s ease;
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.training-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 30px rgba(255, 111, 45, 0.15);
+}
+
+.training-header-card {
+  padding: 1.5rem 1.5rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.training-header-card h3 {
+  margin: 0;
+  color: #2d3748;
+  font-size: 1.125rem;
+  font-weight: 600;
+  flex: 1;
+}
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge.completed {
+  background: rgba(255, 111, 45, 0.1);
+  color: #e55e2b;
+}
+
+.status-badge.pending {
+  background: rgba(255, 179, 71, 0.1);
+  color: #cc8f39;
+}
+
+.training-details {
+  padding: 0 1.5rem;
+}
+
+.detail-row {
+  margin-bottom: 0.75rem;
+  font-size: 0.875rem;
+  color: #718096;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.detail-row strong {
+  color: #2d3748;
+  font-weight: 600;
+}
+
+.training-actions {
+  padding: 1.5rem;
+  border-top: 1px solid rgba(255, 111, 45, 0.1);
+}
+
+.finish-btn {
+  background: linear-gradient(135deg, #ff6f2d, #ff8c42);
+  color: white;
+  border: none;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  width: 100%;
+  box-shadow: 0 4px 15px rgba(255, 111, 45, 0.3);
+}
+
+.finish-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(255, 111, 45, 0.4);
+}
+
+.completed-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: #ff6f2d;
+  font-weight: 600;
+  font-size: 0.875rem;
+  padding: 0.75rem;
+  background: rgba(255, 111, 45, 0.1);
+  border-radius: 12px;
+}
+
+.no-trainings {
+  text-align: center;
+  padding: 3rem;
+  color: #718096;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(255, 111, 45, 0.1);
+  border: 1px solid rgba(255, 111, 45, 0.1);
+}
+
+/* Loading and Error States */
+.loading-container, .error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  text-align: center;
+  padding: 2rem;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(255, 111, 45, 0.1);
+  border-top: 4px solid #ff6f2d;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+.error-message {
+  background: rgba(245, 101, 101, 0.1);
+  border: 1px solid rgba(245, 101, 101, 0.2);
+  border-radius: 16px;
+  padding: 2rem;
+  max-width: 400px;
+  color: #e53e3e;
+  font-weight: 500;
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .training-stats {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  }
+  
+  .training-grid {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .header-content {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+  
+  .header-actions {
+    justify-content: center;
+  }
+  
+  .faculty-training-container .training-header + *,
+  .training-stats,
+  .training-controls,
+  .training-list {
+    padding: 0 1rem;
+  }
+  
+  .training-stats {
+    grid-template-columns: 1fr;
+  }
+  
+  .training-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .filter-buttons {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 111, 45, 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 111, 45, 0.5);
+}

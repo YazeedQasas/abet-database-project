@@ -1,0 +1,21 @@
+.audit-log-container {
+    padding: 1rem;
+    background-color: #f9fafb;
+    border-radius: 8px;
+  }
+  
+  .audit-log-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .audit-log-table th, .audit-log-table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  
+  .audit-log-table th {
+    background-color: #f1f5f9;
+    text-align: left;
+  }
+  

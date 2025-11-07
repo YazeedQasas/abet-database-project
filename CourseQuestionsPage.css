@@ -1,0 +1,103 @@
+.questions-table-container {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  overflow-x: auto; /* Allow horizontal scrolling if needed */
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 1rem;
+}
+
+.page-header h1 {
+  color: #333;
+}
+
+.add-question-btn {
+  background-color: #ff6f2d;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.add-question-btn:hover {
+  background-color: #ff8248;
+}
+
+.questions-table-container {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.questions-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.questions-table th,
+.questions-table td {
+  padding: 15px;
+  text-align: left;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.questions-table th {
+  background-color: #f8f9fa;
+  color: #555;
+  font-weight: 600;
+}
+
+.questions-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.actions-cell {
+  display: flex;
+  gap: 10px;
+}
+
+.actions-cell .action-btn {
+  padding: 5px 10px;
+  font-size: 13px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.actions-cell .edit {
+  background-color: #ffc107;
+  color: #333;
+}
+
+.actions-cell .delete {
+  background-color: #dc3545;
+  color: white;
+}
+
+.outcomes-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px; /* Spacing between badges */
+  align-items: center;
+}
+
+.outcome-badge {
+  background-color: #ff6f2d; /* The orange color from your dashboard */
+  color: white;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
