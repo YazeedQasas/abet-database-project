@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import api from '../../services/api';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import api from "../../services/api";
 
 const DepartmentForm = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    faculty_id: ''
+    name: "",
+    email: "",
+    faculty_id: "",
   });
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -16,7 +16,7 @@ const DepartmentForm = () => {
     const { name, value } = e.target;
     setFormData({
       ...formData,
-      [name]: value
+      [name]: value,
     });
   };
 
@@ -26,13 +26,16 @@ const DepartmentForm = () => {
     setError(null);
 
     try {
-      console.log('Submitting form data:', formData);
-      const response = await api.post('/departments/', formData);
-      console.log('Response:', response.data);
-      navigate('/departments/');
+      console.log("Submitting form data:", formData);
+      const response = await api.post("/departments/", formData);
+      console.log("Response:", response.data);
+      navigate("/departments/");
     } catch (err) {
-      console.error('Error details:', err.response?.data);
-      setError(err.response?.data?.detail || 'Failed to create department. Please check your input and try again.');
+      console.error("Error details:", err.response?.data);
+      setError(
+        err.response?.data?.detail ||
+          "Failed to create department. Please check your input and try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -41,9 +44,9 @@ const DepartmentForm = () => {
   return (
     <div className="department-form">
       <h2>Add New Department</h2>
-      
+
       {error && <div className="error-message">{error}</div>}
-      
+
       <form onSubmit={handleSubmit}>
         <div className="form-group">
           <label htmlFor="name">Department Name</label>
@@ -56,7 +59,7 @@ const DepartmentForm = () => {
             required
           />
         </div>
-        
+
         <div className="form-group">
           <label htmlFor="email">Department Email</label>
           <input
@@ -67,7 +70,7 @@ const DepartmentForm = () => {
             onChange={handleChange}
           />
         </div>
-        
+
         <div className="form-group">
           <label htmlFor="faculty_id">Faculty ID (Optional)</label>
           <input
@@ -78,13 +81,17 @@ const DepartmentForm = () => {
             onChange={handleChange}
           />
         </div>
-        
+
         <div className="form-actions">
-          <button type="button" onClick={() => navigate('/departments')} className="btn-cancel">
+          <button
+            type="button"
+            onClick={() => navigate("/departments")}
+            className="btn-cancel"
+          >
             Cancel
           </button>
           <button type="submit" className="btn-submit" disabled={loading}>
-            {loading ? 'Creating...' : 'Create Department'}
+            {loading ? "Creating..." : "Create Department"}
           </button>
         </div>
       </form>

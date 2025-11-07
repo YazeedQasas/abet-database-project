@@ -67,7 +67,7 @@ const Layout = ({ children }) => {
       label: "Faculty Training",
     },
     { path: "/reports", icon: MdOutlineReport, label: "Reports" },
-    { path: "http://localhost:8080/", icon: FaArchive, label: "Archive" },
+    { path: "/archive", icon: FaArchive, label: "Archive" }, // Improv 1
     ...(currentUser?.userType === "admin"
       ? [
           {

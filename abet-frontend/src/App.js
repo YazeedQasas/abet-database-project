@@ -6,6 +6,7 @@ import ProtectedRoute from "./components/common/ProtectedRoute";
 import Layout from "./components/layout/Layout";
 import Dashboard from "./pages/Dashboard";
 import AdminDashboard from "./pages/AdminDashboard/AdminDashboard";
+import Archive from "./pages/archive/Archive";
 import Home from "./pages/Home";
 import ProgramsList from "./pages/programs/ProgramsList";
 import ProgramDetail from "./pages/programs/ProgramDetail";
@@ -98,6 +99,17 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <FacultyTraining />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/archive"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Archive />
                 </Layout>
               </ProtectedRoute>
             }
