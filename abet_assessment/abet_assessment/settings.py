@@ -120,9 +120,9 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'abet_assessment',
-        'USER': 'abet_user',
-        'PASSWORD': '123',
-        'HOST': '127.0.0.1',
+        'USER' : 'abet_user',
+        'PASSWORD' : 'system',
+        'HOST' : '127.0.0.1',
     }
 }
 
