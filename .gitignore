@@ -37,5 +37,6 @@ env/
 venv/
 .venv/
 
+
 AIS-page
-abet_assessment/settings.py
+abet_assessment/abet_assessment/settings.py
