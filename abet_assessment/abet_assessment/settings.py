@@ -60,7 +60,8 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ],
     'DEFAULT_FILTER_BACKENDS': [
-        'django_filters.rest_framework.DjangoFilterBackend',  # <-- MOVED TO THE CORRECT PLACE
+        # <-- MOVED TO THE CORRECT PLACE
+        'django_filters.rest_framework.DjangoFilterBackend',
     ],
 }
 
@@ -103,7 +104,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                
+
             ],
         },
     },
@@ -119,11 +120,14 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'abet_assessment',
-        'USER' : 'abet_user',
-        'PASSWORD' : '123',
-        'HOST' : '127.0.0.1',
+        'USER': 'abet_user',
+        'PASSWORD': '123',
+        'HOST': '127.0.0.1',
     }
 }
+
+# This is the folder structure for ABET files
+ARCHIVE_BASE_PATH = r"C:\Users\Cobra Shop\Desktop\University\University Courses\First Semester - 5th Year\Software Engineering\Project\ABETFiles"
 
 
 # Password validation
