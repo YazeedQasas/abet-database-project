@@ -173,3 +173,6 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Encryption Key for Archive Files
+ENCRYPTION_KEY = b'h6w5HedtkR_enPsyNqrrejRojOCV2D68hNYr4Tf_S8U='

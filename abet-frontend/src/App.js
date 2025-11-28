@@ -7,6 +7,7 @@ import Layout from "./components/layout/Layout";
 import Dashboard from "./pages/Dashboard";
 import AdminDashboard from "./pages/AdminDashboard/AdminDashboard";
 import Archive from "./pages/archive/Archive";
+import ArchiveAdmin from "./pages/archive/ArchiveAdmin";
 import Home from "./pages/Home";
 import ProgramsList from "./pages/programs/ProgramsList";
 import ProgramDetail from "./pages/programs/ProgramDetail";
@@ -110,6 +111,17 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <Archive />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/archive-admin"
+            element={
+              <ProtectedRoute requiredRoles={["admin", "HoD", "dean"]}>
+                <Layout>
+                  <ArchiveAdmin />
                 </Layout>
               </ProtectedRoute>
             }

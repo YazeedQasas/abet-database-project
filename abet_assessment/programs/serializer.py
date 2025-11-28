@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Department, Faculty, Program, ProgramEducationalObjective, Course, Student, CourseStudent
+from .models import Department, Faculty, Program, ProgramEducationalObjective, Course, Student, CourseStudent, SemesterCourseAssignment
 from assessment.serializers import AssessmentSerializer
 from assessment.services import AssessmentService
 
@@ -9,6 +9,8 @@ class DepartmentSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class FacultySerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username', read_only=True)
+    
     class Meta:
         model = Faculty
         fields = '__all__'
@@ -57,3 +59,13 @@ class CourseStudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = CourseStudent
         fields = '__all__'
+
+class SemesterCourseAssignmentSerializer(serializers.ModelSerializer):
+    course_details = CourseSerializer(source='course', read_only=True)
+    instructor_details = FacultySerializer(source='instructor', read_only=True)
+    program_details = ProgramSerializer(source='program', read_only=True)
+    
+    class Meta:
+        model = SemesterCourseAssignment
+        fields = '__all__'
+        read_only_fields = ('created_at', 'updated_at')

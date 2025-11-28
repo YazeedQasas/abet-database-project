@@ -473,13 +473,13 @@ const Dashboard = () => {
           enrollment: course.enrollment || 0,
           mappedOutcomes: Array.isArray(course.mapped_outcomes)
             ? course.mapped_outcomes
-                .map((outcome) =>
-                  typeof outcome === "object" ? outcome.label : outcome
-                )
-                .join(", ")
+              .map((outcome) =>
+                typeof outcome === "object" ? outcome.label : outcome
+              )
+              .join(", ")
             : Array.isArray(course.outcomes)
-            ? course.outcomes.join(", ")
-            : "None",
+              ? course.outcomes.join(", ")
+              : "None",
           assessmentScore:
             course.assessmentScore || course.assessment_score || 0,
           status: course.status || "Needs Review",
@@ -807,8 +807,8 @@ const Dashboard = () => {
           typeof item.score === "number"
             ? item.score
             : typeof item.current_score === "number"
-            ? item.current_score / 25
-            : 0, // Convert percentage back to 4-point scale
+              ? item.current_score / 25
+              : 0, // Convert percentage back to 4-point scale
         target: item.target || item.target_score || 4.0,
         status: item.status || "unknown",
       };
@@ -1027,15 +1027,6 @@ const Dashboard = () => {
                     targetRatio = targetNum / metric.total; // fallback
                   }
 
-                  console.log("🎯 Student Outcomes Debug:", {
-                    current: metric.current,
-                    total: metric.total,
-                    target: metric.target,
-                    ratio: ratio,
-                    targetRatio: targetRatio,
-                    meetsTarget: ratio >= targetRatio,
-                  });
-
                   // Clear status logic: 10/10 >= 8/10 should be "good"
                   if (ratio >= targetRatio) {
                     displayStatus = ratio === 1.0 ? "excellent" : "good"; // ✅ Green for 10/10
@@ -1044,11 +1035,6 @@ const Dashboard = () => {
                   } else {
                     displayStatus = "critical"; // ✅ Red
                   }
-
-                  console.log(
-                    "🎯 Final Student Outcomes Status:",
-                    displayStatus
-                  );
                 }
 
                 // Special handling for Faculty Training with real-time data
@@ -1064,10 +1050,10 @@ const Dashboard = () => {
                       displayValue >= 95
                         ? "excellent"
                         : displayValue >= 80
-                        ? "good"
-                        : displayValue >= 60
-                        ? "warning"
-                        : "critical";
+                          ? "good"
+                          : displayValue >= 60
+                            ? "warning"
+                            : "critical";
                   }
                   displayTarget = `Target: ${metric.target}%`;
                 }
@@ -1096,11 +1082,10 @@ const Dashboard = () => {
                       <div
                         className={`progress-fill ${displayStatus}`}
                         style={{
-                          width: `${
-                            isStudentOutcomes
-                              ? (metric.current / metric.total) * 100
-                              : Math.min(displayValue, 100)
-                          }%`,
+                          width: `${isStudentOutcomes
+                            ? (metric.current / metric.total) * 100
+                            : Math.min(displayValue, 100)
+                            }%`,
                         }}
                       ></div>
                     </div>
@@ -1110,6 +1095,143 @@ const Dashboard = () => {
                   </div>
                 );
               })}
+            </div>
+
+            {/* Split Section: Activities & Compliance */}
+            <div className="overview-split-section">
+              {/* Recent Assessment Activities */}
+              <div className="recent-activities">
+                <div className="activities-header">
+                  <h3>Recent Assessment Activities</h3>
+                  <button
+                    className="view-all-btn"
+                    onClick={() => (window.location.href = "/audit-logs")}
+                  >
+                    <i className="fas fa-external-link-alt"></i>
+                    View All Audit Logs
+                  </button>
+                </div>
+
+                <div className="activity-timeline">
+                  {recentActivities.length > 0 ? (
+                    recentActivities.map((log, index) => {
+                      // Helper function to get activity icon based on action
+                      const getActivityIcon = (action) => {
+                        switch (action?.toUpperCase()) {
+                          case "CREATE":
+                            return "completed";
+                          case "UPDATE":
+                            return "pending";
+                          case "DELETE":
+                            return "warning";
+                          default:
+                            return "completed";
+                        }
+                      };
+
+                      // Helper function to format activity title - more descriptive
+                      const getActivityTitle = (log) => {
+                        const action = log.action?.toUpperCase() || "UNKNOWN";
+                        const targetName =
+                          log.target_name ||
+                          `${log.target_model} ${log.target_id}`;
+
+                        switch (action) {
+                          case "CREATE":
+                            return `Created ${targetName}`;
+                          case "UPDATE":
+                            return `Updated ${targetName}`;
+                          case "DELETE":
+                            return `Deleted ${targetName}`;
+                          default:
+                            return `${action} ${targetName}`;
+                        }
+                      };
+
+                      // Helper function to get activity description with username
+                      const getActivityDescription = (log) => {
+                        const username = log.username || "Unknown user";
+                        const action =
+                          log.action?.toLowerCase() || "performed action on";
+                        const model = log.target_model?.toLowerCase() || "item";
+                        const id = log.target_id || "";
+
+                        // Create more natural language descriptions
+                        switch (log.action?.toUpperCase()) {
+                          case "CREATE":
+                            return `${username} has created ${model} ${id}`;
+                          case "UPDATE":
+                            return `${username} has updated ${model} ${id}`;
+                          case "DELETE":
+                            return `${username} has deleted ${model} ${id}`;
+                          default:
+                            return `${username} has ${action} ${model} ${id}`;
+                        }
+                      };
+
+                      // Helper function to format timestamp
+                      const formatTimestamp = (timestamp) => {
+                        const date = new Date(timestamp);
+                        const now = new Date();
+                        const diffInHours = Math.floor(
+                          (now - date) / (1000 * 60 * 60)
+                        );
+
+                        if (diffInHours < 1) {
+                          const diffInMinutes = Math.floor(
+                            (now - date) / (1000 * 60)
+                          );
+                          return diffInMinutes <= 1
+                            ? "Just now"
+                            : `${diffInMinutes} minutes ago`;
+                        } else if (diffInHours < 24) {
+                          return `${diffInHours} hour${diffInHours > 1 ? "s" : ""
+                            } ago`;
+                        } else {
+                          const diffInDays = Math.floor(diffInHours / 24);
+                          return `${diffInDays} day${diffInDays > 1 ? "s" : ""
+                            } ago`;
+                        }
+                      };
+
+                      return (
+                        <div
+                          key={log.id || index}
+                          className={`activity-item ${getActivityIcon(
+                            log.action
+                          )}`}
+                        >
+                          <div
+                            className={`activity-marker ${getActivityIcon(
+                              log.action
+                            )}`}
+                          ></div>
+                          <div className="activity-content">
+                            <h4>{getActivityTitle(log)}</h4>
+                            <p>{getActivityDescription(log)}</p>
+                            <span className="activity-time">
+                              {formatTimestamp(log.timestamp)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="no-activities">
+                      <p>No recent activities found</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <CoursePieChart
+                data={prepareCourseStatusData(
+                  dashboardData.coursesData.length > 0
+                    ? dashboardData.coursesData
+                    : coursesData
+                )}
+                title="Course Compliance Status Distribution"
+              />
             </div>
 
             {/* Assessment Overview */}
@@ -1135,141 +1257,6 @@ const Dashboard = () => {
                 />
               </div>
             </div>
-            {/* Recent Assessment Activities */}
-            <div className="recent-activities">
-              <div className="activities-header">
-                <h3>Recent Assessment Activities</h3>
-                <button
-                  className="view-all-btn"
-                  onClick={() => (window.location.href = "/audit-logs")}
-                >
-                  <i className="fas fa-external-link-alt"></i>
-                  View All Audit Logs
-                </button>
-              </div>
-
-              <div className="activity-timeline">
-                {recentActivities.length > 0 ? (
-                  recentActivities.map((log, index) => {
-                    // Helper function to get activity icon based on action
-                    const getActivityIcon = (action) => {
-                      switch (action?.toUpperCase()) {
-                        case "CREATE":
-                          return "completed";
-                        case "UPDATE":
-                          return "pending";
-                        case "DELETE":
-                          return "warning";
-                        default:
-                          return "completed";
-                      }
-                    };
-
-                    // Helper function to format activity title - more descriptive
-                    const getActivityTitle = (log) => {
-                      const action = log.action?.toUpperCase() || "UNKNOWN";
-                      const targetName =
-                        log.target_name ||
-                        `${log.target_model} ${log.target_id}`;
-
-                      switch (action) {
-                        case "CREATE":
-                          return `Created ${targetName}`;
-                        case "UPDATE":
-                          return `Updated ${targetName}`;
-                        case "DELETE":
-                          return `Deleted ${targetName}`;
-                        default:
-                          return `${action} ${targetName}`;
-                      }
-                    };
-
-                    // Helper function to get activity description with username
-                    const getActivityDescription = (log) => {
-                      const username = log.username || "Unknown user";
-                      const action =
-                        log.action?.toLowerCase() || "performed action on";
-                      const model = log.target_model?.toLowerCase() || "item";
-                      const id = log.target_id || "";
-
-                      // Create more natural language descriptions
-                      switch (log.action?.toUpperCase()) {
-                        case "CREATE":
-                          return `${username} has created ${model} ${id}`;
-                        case "UPDATE":
-                          return `${username} has updated ${model} ${id}`;
-                        case "DELETE":
-                          return `${username} has deleted ${model} ${id}`;
-                        default:
-                          return `${username} has ${action} ${model} ${id}`;
-                      }
-                    };
-
-                    // Helper function to format timestamp
-                    const formatTimestamp = (timestamp) => {
-                      const date = new Date(timestamp);
-                      const now = new Date();
-                      const diffInHours = Math.floor(
-                        (now - date) / (1000 * 60 * 60)
-                      );
-
-                      if (diffInHours < 1) {
-                        const diffInMinutes = Math.floor(
-                          (now - date) / (1000 * 60)
-                        );
-                        return diffInMinutes <= 1
-                          ? "Just now"
-                          : `${diffInMinutes} minutes ago`;
-                      } else if (diffInHours < 24) {
-                        return `${diffInHours} hour${
-                          diffInHours > 1 ? "s" : ""
-                        } ago`;
-                      } else {
-                        const diffInDays = Math.floor(diffInHours / 24);
-                        return `${diffInDays} day${
-                          diffInDays > 1 ? "s" : ""
-                        } ago`;
-                      }
-                    };
-
-                    return (
-                      <div
-                        key={log.id || index}
-                        className={`activity-item ${getActivityIcon(
-                          log.action
-                        )}`}
-                      >
-                        <div
-                          className={`activity-marker ${getActivityIcon(
-                            log.action
-                          )}`}
-                        ></div>
-                        <div className="activity-content">
-                          <h4>{getActivityTitle(log)}</h4>
-                          <p>{getActivityDescription(log)}</p>
-                          <span className="activity-time">
-                            {formatTimestamp(log.timestamp)}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="no-activities">
-                    <p>No recent activities found</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <CoursePieChart
-              data={prepareCourseStatusData(
-                dashboardData.coursesData.length > 0
-                  ? dashboardData.coursesData
-                  : coursesData
-              )}
-              title="Course Compliance Status Distribution"
-            />
           </div>
         )}
 
@@ -1307,15 +1294,14 @@ const Dashboard = () => {
                         {outcome.id || outcome.label || `Outcome ${index + 1}`}
                       </h3>
                       <span
-                        className={`outcome-status ${
-                          outcome.status || "unknown"
-                        }`}
+                        className={`outcome-status ${outcome.status || "unknown"
+                          }`}
                       >
                         {outcome.status === "met"
                           ? "Target Met"
                           : outcome.status === "exceeded"
-                          ? "Exceeded"
-                          : "Below Target"}
+                            ? "Exceeded"
+                            : "Below Target"}
                       </span>
                     </div>
                     <h4>
@@ -1333,9 +1319,8 @@ const Dashboard = () => {
                     {/* FIXED: Change from outcome-progress to progress-bar */}
                     <div className="progress-bar">
                       <div
-                        className={`progress-fill ${
-                          outcome.status || "unknown"
-                        }`}
+                        className={`progress-fill ${outcome.status || "unknown"
+                          }`}
                         style={{
                           width: `${Math.min(percentage, 100)}%`,
                         }}
@@ -1384,17 +1369,16 @@ const Dashboard = () => {
                       <td>{course.enrollment || 0}</td>
                       <td className="mapped-outcomes">
                         {course.mapped_outcomes &&
-                        Array.isArray(course.mapped_outcomes) &&
-                        course.mapped_outcomes.length > 0 ? (
+                          Array.isArray(course.mapped_outcomes) &&
+                          course.mapped_outcomes.length > 0 ? (
                           <div className="outcomes-container">
                             {course.mapped_outcomes.map((outcome, idx) => (
                               <span
                                 key={idx}
-                                className={`outcome-badge ${
-                                  typeof outcome === "object"
-                                    ? outcome.status
-                                    : "met"
-                                }`}
+                                className={`outcome-badge ${typeof outcome === "object"
+                                  ? outcome.status
+                                  : "met"
+                                  }`}
                                 title={
                                   typeof outcome === "object"
                                     ? `Score: ${outcome.score}/4 (${outcome.evidence_type})`
@@ -1413,19 +1397,19 @@ const Dashboard = () => {
                             )}
                           </div>
                         ) : // Fallback for simple array format
-                        course.outcomes && course.outcomes.length > 0 ? (
-                          <div className="outcomes-tags">
-                            {course.outcomes.map((outcome, i) => (
-                              <span key={i} className="outcome-tag">
-                                {outcome}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="no-outcomes">
-                            No outcomes mapped
-                          </span>
-                        )}
+                          course.outcomes && course.outcomes.length > 0 ? (
+                            <div className="outcomes-tags">
+                              {course.outcomes.map((outcome, i) => (
+                                <span key={i} className="outcome-tag">
+                                  {outcome}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="no-outcomes">
+                              No outcomes mapped
+                            </span>
+                          )}
                       </td>
 
                       <td className="assessment-score">
@@ -1438,7 +1422,7 @@ const Dashboard = () => {
                       <td>
                         <span className={`course-status ${course.status}`}>
                           {course.status === "compliant" ||
-                          course.status === "good"
+                            course.status === "good"
                             ? "Compliant"
                             : "Needs Review"}
                         </span>

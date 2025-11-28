@@ -1,6 +1,6 @@
 from rest_framework import viewsets, permissions
-from .models import Department, Faculty, Program, ProgramEducationalObjective, Course, Student, CourseStudent
-from .serializer import DepartmentSerializer, FacultySerializer, ProgramSerializer, ProgramEducationalObjectiveSerializer, CourseSerializer, StudentSerializer, CourseStudentSerializer
+from .models import Department, Faculty, Program, ProgramEducationalObjective, Course, Student, CourseStudent, SemesterCourseAssignment
+from .serializer import DepartmentSerializer, FacultySerializer, ProgramSerializer, ProgramEducationalObjectiveSerializer, CourseSerializer, StudentSerializer, CourseStudentSerializer, SemesterCourseAssignmentSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -74,3 +74,27 @@ class StudentViewSet(viewsets.ModelViewSet):
 class CourseStudentViewSet(viewsets.ModelViewSet):
     queryset = CourseStudent.objects.all()
     serializer_class = CourseStudentSerializer
+
+
+class SemesterCourseAssignmentViewSet(viewsets.ModelViewSet):
+    queryset = SemesterCourseAssignment.objects.all()
+    serializer_class = SemesterCourseAssignmentSerializer
+
+    def get_queryset(self):
+        """Allow filtering by academic_year and semester via query parameters"""
+        queryset = SemesterCourseAssignment.objects.all()
+        academic_year = self.request.query_params.get('academic_year', None)
+        semester = self.request.query_params.get('semester', None)
+        
+        if academic_year:
+            queryset = queryset.filter(academic_year=academic_year)
+        if semester:
+            queryset = queryset.filter(semester=semester)
+            
+        return queryset
+
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            # Only admin/HOD/Dean can create/update/delete
+            return [IsAuthenticated(), IsAdminUserType()]
+        return [IsAuthenticated()]  # Anyone logged in can view

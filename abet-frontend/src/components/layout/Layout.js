@@ -68,14 +68,23 @@ const Layout = ({ children }) => {
     },
     { path: "/reports", icon: MdOutlineReport, label: "Reports" },
     { path: "/archive", icon: FaArchive, label: "Archive" }, // Improv 1
+    ...(currentUser?.userType === "admin" || currentUser?.userType === "HoD" || currentUser?.userType === "dean"
+      ? [
+        {
+          path: "/archive-admin",
+          icon: FaArchive, // Reusing archive icon or could import another
+          label: "Archive Admin",
+        },
+      ]
+      : []),
     ...(currentUser?.userType === "admin"
       ? [
-          {
-            path: "/AdminDashboard",
-            icon: MdAdminPanelSettings,
-            label: "Admin Dashboard",
-          },
-        ]
+        {
+          path: "/AdminDashboard",
+          icon: MdAdminPanelSettings,
+          label: "Admin Dashboard",
+        },
+      ]
       : []),
   ];
 

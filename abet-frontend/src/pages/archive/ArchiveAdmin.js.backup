@@ -1,0 +1,670 @@
+import React, { useState, useEffect, useContext } from "react";
+import axios from "axios";
+import { AuthContext } from "../../context/AuthContext";
+import { fetchAcademicYears, fetchArchiveStructure, fetchFiles, autoGenerateArchive, deleteAcademicYear } from "../../services/archive";
+import api from "../../services/api";
+import { saveAs } from "file-saver";
+import { FaFolder, FaFile, FaDownload, FaTrash, FaMagic, FaChevronDown, FaChevronUp } from "react-icons/fa";
+import "./ArchiveAdmin.css";
+
+const ArchiveAdmin = () => {
+    const { currentUser } = useContext(AuthContext);
+
+    // State for dropdowns
+    const [years, setYears] = useState([]);
+    const [departments, setDepartments] = useState([]);
+    const [programs, setPrograms] = useState([]);
+    const [doctors, setDoctors] = useState([]);
+    const [courses, setCourses] = useState([]);
+    // If selected year is not in new list, select first
+    if (yearsData.length > 0 && !yearsData.includes(selectedYear)) {
+        const sortedYears = [...yearsData].sort((a, b) => b.localeCompare(a));
+        setSelectedYear(sortedYears[0]);
+    }
+} catch (e) {
+    console.error("Failed to load years", e);
+}
+};
+
+// Initial Load: Years and Departments
+useEffect(() => {
+    const loadInitialData = async () => {
+        try {
+            setLoading(true);
+            const [yearsData, deptsData] = await Promise.all([
+                fetchAcademicYears(),
+                api.get("/departments/")
+            ]);
+
+            setYears(yearsData);
+            setDepartments(deptsData.data);
+
+            // Default to latest year if available
+            if (yearsData.length > 0) {
+                // Sort years descending to get latest
+                const sortedYears = [...yearsData].sort((a, b) => b.localeCompare(a));
+                setSelectedYear(sortedYears[0]);
+            }
+        } catch (err) {
+            console.error("Error loading initial data:", err);
+            setError("Failed to load initial data");
+        } finally {
+            setLoading(false);
+        }
+    };
+    loadInitialData();
+}, []);
+
+// Fetch Archive Structure when Year changes
+useEffect(() => {
+    if (!selectedYear) return;
+
+    const loadStructure = async () => {
+        try {
+            setLoading(true);
+            const structure = await fetchArchiveStructure(selectedYear);
+            setArchiveStructure(structure);
+        } catch (err) {
+            console.error("Error loading archive structure:", err);
+            setError("Failed to load archive structure");
+        } finally {
+            setLoading(false);
+        }
+    };
+    loadStructure();
+}, [selectedYear]);
+
+// Fetch Programs when Department changes
+useEffect(() => {
+    if (!selectedDept) {
+        setPrograms([]);
+        setSelectedProgram("");
+        return;
+    }
+
+    const loadPrograms = async () => {
+        try {
+            const response = await api.get("/programs/");
+            // Filter programs by department
+            const deptPrograms = response.data.filter(
+                p => p.department === parseInt(selectedDept)
+            );
+            setPrograms(deptPrograms);
+            setSelectedProgram("");
+        } catch (err) {
+            console.error("Error loading programs:", err);
+        }
+    };
+    loadPrograms();
+}, [selectedDept]);
+
+// Fetch Doctors when Department changes
+useEffect(() => {
+    if (!selectedDept) {
+        setDoctors([]);
+        setSelectedDoctor("");
+        return;
+    }
+
+    const loadDoctors = async () => {
+        try {
+            const response = await api.get("/faculty/");
+            // Filter doctors by department
+            const deptDoctors = response.data.filter(
+                d => d.department === parseInt(selectedDept)
+            );
+            setDoctors(deptDoctors);
+            setSelectedDoctor("");
+        } catch (err) {
+            console.error("Error loading doctors:", err);
+        }
+    };
+    loadDoctors();
+}, [selectedDept]);
+
+// Fetch Config Doctors when Config Department changes
+useEffect(() => {
+    if (!selectedConfigDept) {
+        setConfigDoctors([]);
+        setSelectedProfessors([]);
+        return;
+    }
+
+    const loadConfigDoctors = async () => {
+        try {
+            const response = await api.get("/faculty/");
+            const deptDoctors = response.data.filter(
+                d => d.department === parseInt(selectedConfigDept)
+            );
+            setConfigDoctors(deptDoctors);
+            setSelectedProfessors([]); // Reset selected professors when department changes
+        } catch (err) {
+            console.error("Error loading config doctors:", err);
+        }
+    };
+    loadConfigDoctors();
+}, [selectedConfigDept]);
+
+// Derive Courses when Doctor or Structure changes
+useEffect(() => {
+    if (!selectedDoctor || !selectedYear || !archiveStructure) {
+        setCourses([]);
+        setSelectedCourse("");
+        return;
+    }
+
+    const doctorObj = doctors.find(d => d.id.toString() === selectedDoctor);
+    if (!doctorObj) return;
+
+    const foundCourses = new Set();
+
+    Object.keys(archiveStructure).forEach(term => {
+        const professors = archiveStructure[term];
+        const profKey = findProfessorKey(professors, doctorObj);
+
+        if (profKey && professors[profKey]) {
+            Object.keys(professors[profKey]).forEach(course => {
+                // Filter out common non-course folders if they appear at this level
+                if (!["syllabus", "exams", "assignments", "slides"].includes(course.toLowerCase())) {
+                    foundCourses.add(course);
+                }
+            });
+        }
+    });
+
+    setCourses(Array.from(foundCourses));
+    setSelectedCourse("");
+}, [selectedDoctor, archiveStructure, doctors, selectedYear]);
+
+// Fetch Folder Types when Course is selected
+const [folderTypes, setFolderTypes] = useState([]);
+const [selectedFolderType, setSelectedFolderType] = useState("");
+
+useEffect(() => {
+    if (!selectedCourse || !selectedDoctor) {
+        setFolderTypes([]);
+        return;
+    }
+
+    const doctorObj = doctors.find(d => d.id.toString() === selectedDoctor);
+    if (!doctorObj) return;
+
+    const types = new Set();
+
+    Object.keys(archiveStructure).forEach(term => {
+        const professors = archiveStructure[term];
+        const profKey = findProfessorKey(professors, doctorObj);
+
+        if (profKey && professors[profKey] && professors[profKey][selectedCourse]) {
+            Object.keys(professors[profKey][selectedCourse]).forEach(type => {
+                types.add(type);
+            });
+        }
+    });
+
+    setFolderTypes(Array.from(types));
+}, [selectedCourse, archiveStructure, doctors, selectedDoctor]);
+
+
+const handleDownload = async (filename, folderType) => {
+    const doctorObj = doctors.find(d => d.id.toString() === selectedDoctor);
+    if (!doctorObj) return;
+
+    let foundPath = null;
+
+    for (const term of Object.keys(archiveStructure)) {
+        const professors = archiveStructure[term];
+        const profKey = findProfessorKey(professors, doctorObj);
+
+        if (profKey && professors[profKey] && professors[profKey][selectedCourse] && professors[profKey][selectedCourse][folderType]) {
+            foundPath = [term, profKey, selectedCourse, folderType].join("/");
+            break;
+        }
+    }
+
+    if (!foundPath) return;
+
+    try {
+        const response = await api.get(
+            `/download/?year=${selectedYear}&path=${encodeURIComponent(foundPath)}&filename=${encodeURIComponent(filename)}`,
+            { responseType: "blob" }
+        );
+        saveAs(response.data, filename);
+    } catch (err) {
+        alert("Download failed: " + (err.response?.data?.error || err.message));
+    }
+};
+
+const handleFolderClick = async (type) => {
+    setSelectedFolderType(type);
+    setFiles([]);
+
+    const doctorObj = doctors.find(d => d.id.toString() === selectedDoctor);
+    if (!doctorObj) return;
+
+    let foundPath = null;
+
+    for (const term of Object.keys(archiveStructure)) {
+        const professors = archiveStructure[term];
+        const profKey = findProfessorKey(professors, doctorObj);
+
+        if (profKey && professors[profKey] && professors[profKey][selectedCourse] && professors[profKey][selectedCourse][type]) {
+            foundPath = [term, profKey, selectedCourse, type].join("/");
+            break;
+        }
+    }
+
+    if (foundPath) {
+        try {
+            const f = await fetchFiles(selectedYear, foundPath);
+            setFiles(f);
+        } catch (e) {
+            console.error(e);
+            setFiles([]);
+        }
+    }
+};
+
+// --- Management Functions ---
+
+const getNextAcademicYear = (yearsList) => {
+    const parsed = yearsList
+        .map((y) => y.match(/^(\d{4})-(\d{4})$/))
+        .filter(Boolean)
+        .map((m) => [parseInt(m[1]), parseInt(m[2])]);
+    if (!parsed.length) {
+        const thisYear = new Date().getFullYear();
+        return `${thisYear}-${thisYear + 1}`;
+    }
+    parsed.sort((a, b) => b[0] - a[0]);
+    const [start, end] = parsed[0];
+    return `${end}-${end + 1}`;
+};
+
+const nextAcademicYear = getNextAcademicYear(years);
+const yearAlreadyExists = years.includes(nextAcademicYear);
+
+const handleAutoGenerate = async () => {
+    setLoading(true);
+    setError("");
+    try {
+        await autoGenerateArchive(nextAcademicYear);
+        await loadYears();
+        setSelectedYear(nextAcademicYear);
+    } catch (e) {
+        setError("Failed to generate: " + e.message);
+    } finally {
+        setLoading(false);
+    }
+};
+
+const handleDeleteYear = async () => {
+    if (!selectedYear) return;
+
+    const confirmMsg = `CRITICAL WARNING:\n\nYou are about to DELETE the entire archive for Academic Year ${selectedYear}.\n\nALL FILES AND FOLDERS WILL BE PERMANENTLY LOST.\n\nAre you absolutely sure you want to proceed?`;
+
+    if (window.confirm(confirmMsg)) {
+        // Double confirmation
+        if (window.confirm(`Please confirm again: DELETE ${selectedYear} PERMANENTLY?`)) {
+            setLoading(true);
+            try {
+                await deleteAcademicYear(selectedYear);
+                await loadYears();
+                setSelectedYear(""); // Reset selection
+            } catch (e) {
+                setError("Failed to delete year: " + e.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+    }
+};
+
+// Professor selection handlers
+const toggleProfessor = (professorId) => {
+    setSelectedProfessors(prev => {
+        if (prev.includes(professorId)) {
+            return prev.filter(id => id !== professorId);
+        } else {
+            return [...prev, professorId];
+        }
+    });
+};
+
+const toggleSelectAll = () => {
+    if (selectedProfessors.length === configDoctors.length) {
+        setSelectedProfessors([]);
+    } else {
+        setSelectedProfessors(configDoctors.map(d => d.id));
+    }
+};
+
+const isAllProfessorsSelected = () => {
+    return configDoctors.length > 0 && selectedProfessors.length === configDoctors.length;
+};
+
+return (
+    <div className="archive-admin-container">
+        <div className="archive-admin-header">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                    <h1 className="archive-admin-title">Archive Admin</h1>
+                    <p className="archive-admin-subtitle">Manage and view archives by Department and Faculty</p>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <span style={{ fontSize: '0.9rem', color: yearAlreadyExists ? '#718096' : '#ed8936' }}>
+                        {yearAlreadyExists ? `Next: ${nextAcademicYear} (Exists)` : `Next: ${nextAcademicYear}`}
+                    </span>
+                    <button
+                        className="action-btn"
+                        onClick={handleAutoGenerate}
+                        disabled={yearAlreadyExists || loading}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                    >
+                        <FaMagic /> Auto-Generate New Year
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div className="filters-container">
+            {/* 1. Year Selection */}
+            <div className="filter-group">
+                <label className="filter-label">Academic Year</label>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <select
+                        className="filter-select"
+                        value={selectedYear}
+                        onChange={(e) => setSelectedYear(e.target.value)}
+                        style={{ flex: 1 }}
+                    >
+                        {years.map(y => <option key={y} value={y}>{y}</option>)}
+                    </select>
+                    {selectedYear && (
+                        <button
+                            className="action-btn danger"
+                            onClick={handleDeleteYear}
+                            title="Delete this Academic Year"
+                            style={{ padding: '0.5rem' }}
+                        >
+                            <FaTrash />
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            {/* 2. Department Selection */}
+            <div className="filter-group">
+                <label className="filter-label">Department</label>
+                <select
+                    className="filter-select"
+                    value={selectedDept}
+                    onChange={(e) => setSelectedDept(e.target.value)}
+                >
+                    <option value="">Select Department</option>
+                    {departments.map(d => (
+                        <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                </select>
+            </div>
+
+            {/* 3. Program Selection */}
+            <div className="filter-group">
+                <label className="filter-label">Program</label>
+                <select
+                    className="filter-select"
+                    value={selectedProgram}
+                    onChange={(e) => setSelectedProgram(e.target.value)}
+                    disabled={!selectedDept}
+                >
+                    <option value="">Select Program</option>
+                    {programs.map(p => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                </select>
+            </div>
+
+            {/* 4. Doctor Selection */}
+            <div className="filter-group">
+                <label className="filter-label">Professor</label>
+                <select
+                    className="filter-select"
+                    value={selectedDoctor}
+                    onChange={(e) => setSelectedDoctor(e.target.value)}
+                    disabled={!selectedProgram}
+                >
+                    <option value="">Select Professor</option>
+                    {doctors.map(d => (
+                        <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                </select>
+            </div>
+
+            {/* 5. Course Selection */}
+            <div className="filter-group">
+                <label className="filter-label">Course</label>
+                <select
+                    className="filter-select"
+                    value={selectedCourse}
+                    onChange={(e) => {
+                        setSelectedCourse(e.target.value);
+                        setSelectedFolderType(""); // Reset folder type
+                        setFiles([]);
+                    }}
+                    disabled={!selectedDoctor}
+                >
+                    <option value="">Select Course</option>
+                    {courses.map(c => (
+                        <option key={c} value={c}>{c}</option>
+                    ))}
+                </select>
+            </div>
+        </div>
+
+        <div className="content-section">
+            {error && <div className="error-message" style={{ color: 'red', marginBottom: '1rem' }}>{error}</div>}
+            {loading && <div className="loading-spinner">Loading...</div>}
+
+            {!loading && !selectedCourse && (
+                <div className="empty-state">
+                    <FaFolder size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
+                    <p>Select all filters to view archive folders</p>
+                </div>
+            )}
+
+            {!loading && selectedCourse && !selectedFolderType && (
+                <div className="folder-grid">
+                    {folderTypes.length > 0 ? folderTypes.map(type => (
+                        <div key={type} className="folder-card" onClick={() => handleFolderClick(type)}>
+                            <div className="folder-header"></div>
+                            <div className="folder-content">
+                                <FaFolder className="folder-icon" />
+                                <span className="folder-name">{type}</span>
+                            </div>
+                        </div>
+                    )) : (
+                        <div className="empty-state">
+                            <p>No folders found for this course.</p>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {!loading && selectedFolderType && (
+                <div>
+                    <button
+                        className="btn-download"
+                        style={{ marginBottom: '1rem' }}
+                        onClick={() => setSelectedFolderType("")}
+                    >
+                        &larr; Back to Folders
+                    </button>
+                    <h3 style={{ marginBottom: '1rem' }}>{selectedFolderType}</h3>
+                    <div className="file-list">
+                        {files.length > 0 ? files.map(file => (
+                            <div key={file} className="file-item">
+                                <div className="file-info">
+                                    <FaFile color="#718096" />
+                                    <span className="file-name">{file}</span>
+                                </div>
+                                <button
+                                    className="btn-download"
+                                    onClick={() => handleDownload(file, selectedFolderType)}
+                                >
+                                    <FaDownload /> Download
+                                </button>
+                            </div>
+                        )) : (
+                            <p>No files in this folder.</p>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+
+        {/* Academic Year Generation Configuration Section */}
+        <div className="config-section">
+            <div
+                className="config-header"
+                onClick={() => setConfigExpanded(!configExpanded)}
+                style={{ cursor: 'pointer' }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    {configExpanded ? <FaChevronUp /> : <FaChevronDown />}
+                    <h2 className="config-title">Academic Year Generation Configuration</h2>
+                </div>
+                <span className="config-subtitle">
+                    Configure course assignments for upcoming semesters
+                </span>
+            </div>
+
+            {configExpanded && (
+                <div className="config-content">
+                    {/* Academic Year Selection */}
+                    <div className="config-year-selector">
+                        <label className="config-label">Select Academic Year:</label>
+                        <select
+                            className="config-select"
+                            value={selectedConfigYear}
+                            onChange={(e) => setSelectedConfigYear(e.target.value)}
+                        >
+                            <option value="">Select Year</option>
+                            {years.map(year => (
+                                <option key={year} value={year}>{year}</option>
+                            ))}
+                            {nextAcademicYear && !years.includes(nextAcademicYear) && (
+                                <option value={nextAcademicYear}>{nextAcademicYear} (Upcoming)</option>
+                            )}
+                        </select>
+                    </div>
+
+                    {selectedConfigYear && (
+                        <>
+                            {/* Semester Tabs */}
+                            <div className="semester-tabs">
+                                {['First', 'Second', 'Summer'].map(semester => (
+                                    <button
+                                        key={semester}
+                                        className={`semester-tab ${activeSemesterTab === semester ? 'active' : ''}`}
+                                        onClick={() => setActiveSemesterTab(semester)}
+                                    >
+                                        {semester} Semester
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Semester Content Area */}
+                            <div className="semester-content">
+                                <h3>Configure Courses for {activeSemesterTab} Semester</h3>
+                                <p style={{ color: '#718096', marginTop: '0.5rem' }}>
+                                    Academic Year: <strong>{selectedConfigYear}</strong>
+                                </p>
+
+                                <div className="professor-selection-area" style={{ marginTop: '2rem' }}>
+                                    {selectedDept ? (
+                                        <>
+                                            {/* Select All Checkbox */}
+                                            <div className="select-all-section">
+                                                <label className="professor-checkbox-label select-all">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isAllProfessorsSelected()}
+                                                        onChange={toggleSelectAll}
+                                                        disabled={doctors.length === 0}
+                                                    />
+                                                    <span className="checkbox-text">
+                                                        Select All Professors ({doctors.length})
+                                                    </span>
+                                                </label>
+                                            </div>
+
+                                            {/* Professor List */}
+                                            {doctors.length > 0 ? (
+                                                <div className="professor-list">
+                                                    {doctors.map(professor => (
+                                                        <label key={professor.id} className="professor-checkbox-label">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedProfessors.includes(professor.id)}
+                                                                onChange={() => toggleProfessor(professor.id)}
+                                                            />
+                                                            <span className="checkbox-text">
+                                                                {professor.name}
+                                                            </span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <p style={{ textAlign: 'center', color: '#a0aec0', padding: '2rem' }}>
+                                                    No professors found in this department.
+                                                </p>
+                                            )}
+
+                                            {/* Selected Professors Summary */}
+                                            {selectedProfessors.length > 0 && (
+                                                <div className="selected-professors-summary">
+                                                    <h4>Selected Professors ({selectedProfessors.length}):</h4>
+                                                    <div className="selected-professors-tags">
+                                                        {selectedProfessors.map(profId => {
+                                                            const prof = doctors.find(d => d.id === profId);
+                                                            return prof ? (
+                                                                <span key={profId} className="professor-tag">
+                                                                    {prof.name}
+                                                                    <button
+                                                                        className="remove-tag-btn"
+                                                                        onClick={() => toggleProfessor(profId)}
+                                                                        title="Remove"
+                                                                    >
+                                                                        ×
+                                                                    </button>
+                                                                </span>
+                                                            ) : null;
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <p style={{ textAlign: 'center', color: '#a0aec0', padding: '2rem' }}>
+                                            Please select a department above to view professors.
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    {!selectedConfigYear && (
+                        <div style={{ textAlign: 'center', padding: '3rem', color: '#a0aec0' }}>
+                            <p>Please select an academic year to begin configuring semester courses.</p>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    </div>
+);
+};
+
+export default ArchiveAdmin;

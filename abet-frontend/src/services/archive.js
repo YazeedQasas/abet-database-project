@@ -60,3 +60,21 @@ export const deleteFile = async (year, path, filename) => {
   );
   return res.data;
 };
+// GET professor courses for a given year/semester (optional department filter)
+export const fetchProfessorCourses = async (year, semester, departmentId = null) => {
+  const params = { year, semester };
+  if (departmentId) params.department_id = departmentId;
+  const res = await api.get('/professor-courses/', { params });
+  return res.data; // expects object mapping professorId -> { name, courses }
+};
+
+// POST assign a new course to a professor for a specific year/semester
+export const assignCourse = async (year, semester, professorId, courseName) => {
+  const res = await api.post('/assign-course/', {
+    year,
+    semester,
+    professor_id: professorId,
+    course_name: courseName,
+  });
+  return res.data;
+};
