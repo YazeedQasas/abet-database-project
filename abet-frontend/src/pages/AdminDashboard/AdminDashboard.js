@@ -5,6 +5,7 @@ import {
   FaUserPlus,
   FaCheck,
   FaExclamationTriangle,
+  FaTrash,
 } from "react-icons/fa";
 import axios from "axios";
 import "./AdminDashboard.css";
@@ -16,6 +17,7 @@ const AdminDashboard = () => {
   const [message, setMessage] = useState({ type: "", text: "" });
   const [formData, setFormData] = useState({
     username: "",
+    user_id: "",
     email: "",
     password: "",
     password2: "",
@@ -23,6 +25,7 @@ const AdminDashboard = () => {
     last_name: "",
     user_type: "faculty",
     department: "",
+    title: "Dr.",
   });
 
   useEffect(() => {
@@ -82,9 +85,17 @@ const AdminDashboard = () => {
     }
 
     try {
+      // Prepend title to first name if selected
+      const submissionData = {
+        ...formData,
+        first_name: formData.title && formData.title !== "None"
+          ? `${formData.title} ${formData.first_name}`
+          : formData.first_name
+      };
+
       const response = await axios.post(
         "http://localhost:8001/api/auth/register/",
-        formData,
+        submissionData,
         {
           headers: {
             Authorization: `Token ${localStorage.getItem("token")}`,
@@ -96,6 +107,7 @@ const AdminDashboard = () => {
       setMessage({ type: "success", text: "User created successfully!" });
       setFormData({
         username: "",
+        user_id: "",
         email: "",
         password: "",
         password2: "",
@@ -103,6 +115,7 @@ const AdminDashboard = () => {
         last_name: "",
         user_type: "faculty",
         department: "",
+        title: "Dr.",
       });
 
       // Refresh the user list
@@ -122,9 +135,27 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleDeleteUser = async (userId, username) => {
+    if (window.confirm(`Are you sure you want to delete user "${username}"? This cannot be undone.`)) {
+      try {
+        await axios.delete(`http://localhost:8001/api/users/${userId}/`, {
+          headers: {
+            Authorization: `Token ${localStorage.getItem("token")}`,
+          },
+        });
+        setMessage({ type: "success", text: "User deleted successfully!" });
+        fetchUsers();
+      } catch (error) {
+        console.error("Delete error:", error);
+        setMessage({ type: "error", text: "Failed to delete user." });
+      }
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       username: "",
+      user_id: "",
       email: "",
       password: "",
       password2: "",
@@ -132,6 +163,7 @@ const AdminDashboard = () => {
       last_name: "",
       user_type: "faculty",
       department: "",
+      title: "Dr.",
     });
     setMessage({ type: "", text: "" });
   };
@@ -182,6 +214,20 @@ const AdminDashboard = () => {
               </div>
 
               <div className="form-group">
+                <label htmlFor="user_id">User ID (Manual)</label>
+                <input
+                  type="text"
+                  id="user_id"
+                  name="user_id"
+                  value={formData.user_id}
+                  onChange={handleChange}
+                  className="form-input"
+                  placeholder="e.g., ID123"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
                 <label htmlFor="email">Email</label>
                 <input
                   type="email"
@@ -192,6 +238,24 @@ const AdminDashboard = () => {
                   className="form-input"
                   required
                 />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="title">Title</label>
+                <select
+                  id="title"
+                  name="title"
+                  value={formData.title}
+                  onChange={handleChange}
+                  className="form-select"
+                >
+                  <option value="Dr.">Dr.</option>
+                  <option value="Prof.">Prof.</option>
+                  <option value="Mr.">Mr.</option>
+                  <option value="Ms.">Ms.</option>
+                  <option value="Mrs.">Mrs.</option>
+                  <option value="None">None</option>
+                </select>
               </div>
 
               <div className="form-group">
@@ -230,9 +294,12 @@ const AdminDashboard = () => {
                   className="form-select"
                   required
                 >
-                  <option value="faculty">Faculty</option>
-                  <option value="staff">Staff</option>
+                  <option value="professor">Professor</option>
+                  <option value="HoD">Head of Department</option>
+                  <option value="dean">Dean</option>
+                  <option value="evaluator">Program Evaluator</option>
                   <option value="admin">Admin</option>
+                  <option value="faculty">Faculty</option>
                 </select>
               </div>
 
@@ -316,6 +383,7 @@ const AdminDashboard = () => {
                   <th>User Type</th>
                   <th>Department</th>
                   <th>Date Joined</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -333,6 +401,16 @@ const AdminDashboard = () => {
                     </td>
                     <td>{user.department_name || "N/A"}</td>
                     <td>{new Date(user.date_joined).toLocaleDateString()}</td>
+                    <td>
+                      <button
+                        className="action-btn danger"
+                        onClick={() => handleDeleteUser(user.id, user.username)}
+                        title="Delete User"
+                        style={{ padding: "0.5rem", color: "white", background: "#e53e3e", border: "none", borderRadius: "4px", cursor: "pointer" }}
+                      >
+                        <FaTrash />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

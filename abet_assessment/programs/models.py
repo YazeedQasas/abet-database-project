@@ -13,6 +13,7 @@ class Department(models.Model):
 
 
 class Faculty(models.Model):
+    user = models.OneToOneField('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='faculty_profile')
     name = models.CharField(max_length=100)
     department = models.ForeignKey(Department, on_delete=models.CASCADE, related_name='faculty_members')
     email = models.EmailField()
@@ -85,3 +86,30 @@ class CourseStudent(models.Model):
     def __str__(self):
         return f"{self.student} enrolled in {self.course}"
 
+
+class SemesterCourseAssignment(models.Model):
+    """
+    Tracks which courses are assigned to which instructors for specific semesters.
+    Used for academic year planning and course scheduling.
+    """
+    SEMESTER_CHOICES = (
+        ('First', 'First Semester'),
+        ('Second', 'Second Semester'),
+        ('Summer', 'Summer Semester'),
+    )
+    
+    academic_year = models.CharField(max_length=20, help_text="Format: 2024-2025")
+    semester = models.CharField(max_length=10, choices=SEMESTER_CHOICES)
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='semester_assignments')
+    instructor = models.ForeignKey(Faculty, on_delete=models.CASCADE, related_name='semester_assignments', null=True, blank=True)
+    program = models.ForeignKey(Program, on_delete=models.CASCADE, related_name='semester_assignments', null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('academic_year', 'semester', 'course', 'instructor')
+        ordering = ['academic_year', 'semester', 'instructor__name']
+        db_table = 'programs_semestercourseassignment'  # Match existing table name
+
+    def __str__(self):
+        return f"{self.course.code} - {self.instructor.name} ({self.academic_year} - {self.semester})"

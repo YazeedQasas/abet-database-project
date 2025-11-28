@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 from programs.views import (
     DepartmentViewSet, FacultyViewSet, ProgramViewSet,
     ProgramEducationalObjectiveViewSet, CourseViewSet,
-    StudentViewSet, CourseStudentViewSet, FacultyViewSet
+    StudentViewSet, CourseStudentViewSet, FacultyViewSet, SemesterCourseAssignmentViewSet
 )
 from core.views import (
     InstitutionalSupportViewSet, ProgramCriteriaViewSet,
@@ -36,6 +36,7 @@ router.register(r'courses', CourseViewSet)
 router.register(r'students', StudentViewSet)
 router.register(r'course-students', CourseStudentViewSet)
 router.register(r'faculty', FacultyViewSet)
+router.register(r'semester-assignments', SemesterCourseAssignmentViewSet)
 
 # Assessment app routes
 router.register(r'assessments', AssessmentViewSet, basename='assessment')

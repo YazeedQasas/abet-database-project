@@ -4,8 +4,6 @@ import { AuthContext } from "../../context/AuthContext";
 import {
   fetchAcademicYears,
   fetchArchiveStructure,
-  autoGenerateArchive,
-  deleteAcademicYear,
   fetchFiles,
   uploadFile,
   deleteFile,
@@ -100,13 +98,69 @@ const Archive = () => {
     }
   };
 
+  // Helper to filter archive structure based on user permissions
+  const filterArchiveByUser = (structure, userType, userId, userName) => {
+    // Admin, HoD, and Dean can see everything
+    if (['admin', 'HoD', 'dean'].includes(userType)) {
+      return structure;
+    }
+
+    // Professors can only see their own folders
+    if (userType === 'professor') {
+      const filteredStructure = {};
+
+      // Normalize function to compare names
+      const normalize = (str) => str.toLowerCase().replace(/^(dr\.|prof\.|mr\.|mrs\.|ms\.)\s*/, "").trim();
+      const normalizedUserName = normalize(userName || "");
+
+      Object.keys(structure).forEach(semesterFolder => {
+        const professors = structure[semesterFolder];
+        if (!professors || typeof professors !== 'object') return;
+
+        const filteredProfessors = {};
+
+        Object.keys(professors).forEach(profFolderName => {
+          // Check if this folder belongs to the current user
+          const parts = profFolderName.split(" - ");
+          const profId = parts.length > 1 ? parts[1].trim() : null;
+          const profName = parts[0].trim();
+          const normalizedProfName = normalize(profName);
+
+          // Match by ID or name
+          if ((profId && profId === userId.toString()) ||
+            (normalizedProfName === normalizedUserName)) {
+            filteredProfessors[profFolderName] = professors[profFolderName];
+          }
+        });
+
+        if (Object.keys(filteredProfessors).length > 0) {
+          filteredStructure[semesterFolder] = filteredProfessors;
+        }
+      });
+
+      return filteredStructure;
+    }
+
+    // For other user types, return empty structure
+    return {};
+  };
+
   const handleYearChange = async (year) => {
     setLoading(true);
     setError("");
     try {
       const s = await fetchArchiveStructure(year);
       console.log("structure api raw response:", s);
-      setStructure(s);
+
+      // Filter structure based on user permissions
+      const filteredStructure = filterArchiveByUser(
+        s,
+        currentUser?.userType || currentUser?.user_type,
+        currentUser?.user_id || currentUser?.id,
+        `${currentUser?.first_name || ''} ${currentUser?.last_name || ''}`.trim()
+      );
+
+      setStructure(filteredStructure);
       setSelectedTerm("");
       setSelectedProfessor(null);
       setSelectedCourse(null);
@@ -129,18 +183,7 @@ const Archive = () => {
     setError("");
   };
 
-  const handleAutoGenerate = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      await autoGenerateArchive(selectedAcademicYear);
-      await handleYearChange(selectedAcademicYear);
-    } catch (e) {
-      setError("Auto-generate failed: " + e.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+
 
   const handleDownload = async (file) => {
     const path = [
@@ -164,43 +207,9 @@ const Archive = () => {
     }
   };
 
-  const handleDeleteCurrentAcademicYear = async (year) => {
-    if (
-      window.confirm(
-        `Are you sure you want to delete all archive data for the academic year ${year}? This cannot be undone.`
-      )
-    ) {
-      setLoading(true);
-      setError("");
-      try {
-        await deleteAcademicYear(year);
-        await loadYears();
-      } catch (e) {
-        setError("Failed to delete: " + e.message);
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
 
-  const getNextAcademicYear = (years) => {
-    const parsed = years
-      .map((y) => y.match(/^(\d{4})-(\d{4})$/))
-      .filter(Boolean)
-      .map((m) => [parseInt(m[1]), parseInt(m[2])]);
-    if (!parsed.length) {
-      // Default first value if empty
-      const thisYear = new Date().getFullYear();
-      return `${thisYear}-${thisYear + 1}`;
-    }
-    // Sort, find max
-    parsed.sort((a, b) => b[0] - a[0]);
-    const [start, end] = parsed[0];
-    return `${end}-${end + 1}`;
-  };
 
-  const nextAcademicYear = getNextAcademicYear(years);
-  const yearAlreadyExists = years.includes(nextAcademicYear);
+
 
   // ---- UI RENDER ----
 
@@ -228,36 +237,7 @@ const Archive = () => {
         <div className="archive-header">
           <div className="archive-header-content simple-header-flex">
             <h1 className="archive-title">Archive</h1>
-            <button
-              className="action-btn"
-              style={{ marginLeft: "2rem", fontWeight: 500 }}
-              disabled={yearAlreadyExists}
-              onClick={async () => {
-                setLoading(true);
-                setError("");
-                try {
-                  await autoGenerateArchive(nextAcademicYear); // frontend API
-                  await loadYears(); // refresh grid/list
-                } catch (e) {
-                  setError("Failed to generate: " + e.message);
-                } finally {
-                  setLoading(false);
-                }
-              }}
-            >
-              Auto-Generate
-            </button>
-            <span
-              style={{
-                marginLeft: "1rem",
-                fontSize: "0.9rem",
-                color: yearAlreadyExists ? "#888" : "#ffa640",
-              }}
-            >
-              {yearAlreadyExists
-                ? `Year ${nextAcademicYear} already exists`
-                : `Next to generate: ${nextAcademicYear}`}
-            </span>
+
           </div>
         </div>
 
@@ -281,15 +261,7 @@ const Archive = () => {
                 <span className="card-title">{year}</span>
               </div>
               <div className="card-actions">
-                <button
-                  className="action-btn danger"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteCurrentAcademicYear(year);
-                  }}
-                >
-                  Delete Year
-                </button>
+
               </div>
             </div>
           ))}
@@ -477,10 +449,10 @@ const Archive = () => {
   if (!selectedCourse) {
     const folderKeys =
       selectedTerm &&
-      selectedProfessor &&
-      structure &&
-      structure[selectedTerm] &&
-      structure[selectedTerm][selectedProfessor]
+        selectedProfessor &&
+        structure &&
+        structure[selectedTerm] &&
+        structure[selectedTerm][selectedProfessor]
         ? Object.keys(structure[selectedTerm][selectedProfessor])
         : [];
     return (
@@ -527,15 +499,15 @@ const Archive = () => {
   if (selectedProfessor && selectedCourse && !selectedFolderType) {
     const leafItems =
       selectedTerm &&
-      selectedProfessor &&
-      selectedCourse &&
-      structure &&
-      structure[selectedTerm] &&
-      structure[selectedTerm][selectedProfessor] &&
-      structure[selectedTerm][selectedProfessor][selectedCourse]
+        selectedProfessor &&
+        selectedCourse &&
+        structure &&
+        structure[selectedTerm] &&
+        structure[selectedTerm][selectedProfessor] &&
+        structure[selectedTerm][selectedProfessor][selectedCourse]
         ? Object.keys(
-            structure[selectedTerm][selectedProfessor][selectedCourse]
-          )
+          structure[selectedTerm][selectedProfessor][selectedCourse]
+        )
         : [];
     return (
       <div className="abet-archive">
